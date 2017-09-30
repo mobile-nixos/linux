@@ -168,6 +168,7 @@
 };
 
 &csi_in {
+#if 0
 	csi_hm5065_ep: endpoint {
 		remote-endpoint = <&hm5065_ep>;
 		bus-width = <8>;
@@ -176,6 +177,16 @@
 		hsync-active = <0>;
 		vsync-active = <1>;
 	};
+#else
+	csi_gc2145_ep: endpoint {
+		remote-endpoint = <&gc2145_ep>;
+		bus-width = <8>;
+		hsync-active = <1>;
+		vsync-active = <1>;
+		data-active = <1>;
+		pclk-sample = <1>;
+	};
+#endif
 };
 
 &de {
@@ -227,6 +238,30 @@
 };
 
 &i2c_gpio {
+#if 1
+	gc2145: camera@3c {
+		compatible = "galaxycore,gc2145";
+		reg = <0x3c>;
+		clocks = <&ccu CLK_CSI_MCLK>;
+		clock-names = "xclk";
+		IOVDD-supply = <&reg_dldo3>;
+		AVDD-supply = <&reg_dldo4>;
+		DVDD-supply = <&reg_eldo3>;
+		reset-gpios = <&pio 4 16 (GPIO_ACTIVE_LOW)>; /* PE16 */
+		enable-gpios = <&pio 4 17 (GPIO_ACTIVE_LOW)>; /* PE17 */
+
+		port {
+			gc2145_ep: endpoint {
+				remote-endpoint = <&csi_gc2145_ep>;
+				bus-width = <8>;
+				hsync-active = <1>;
+				vsync-active = <1>;
+				data-active = <1>;
+				pclk-sample = <1>;
+			};
+		};
+	};
+#else
 	hm5065: camera@1f {
 		compatible = "himax,hm5065";
 		reg = <0x1f>;
@@ -236,8 +271,8 @@
 		AVDD-supply = <&reg_dldo4>;
 		DVDD-supply = <&reg_eldo3>;
 		AFVDD-supply = <&reg_dldo3>;
-		reset-gpios = <&pio 4 18 GPIO_ACTIVE_LOW>; /* PE18 */
-		enable-gpios = <&pio 4 19 GPIO_ACTIVE_HIGH>; /* PE19 */
+		reset-gpios = <&pio 4 18 (GPIO_ACTIVE_LOW | GPIO_OPEN_DRAIN)>; /* PE18 */
+		enable-gpios = <&pio 4 19 (GPIO_ACTIVE_HIGH | GPIO_OPEN_DRAIN)>; /* PE19 */
 
 		port {
 			hm5065_ep: endpoint {
@@ -250,6 +285,7 @@
 			};
 		};
 	};
+#endif
 };
 
 &mmc0 {
