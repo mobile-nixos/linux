@@ -255,3 +255,8 @@
 &sid {
 	compatible = "allwinner,sun50i-h5-sid";
 };
+
+&ths {
+	compatible = "allwinner,sun50i-h5-ths";
+	#thermal-sensor-cells = <1>;
+};
