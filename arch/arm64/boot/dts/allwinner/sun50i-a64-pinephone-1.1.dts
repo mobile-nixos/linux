@@ -47,3 +47,8 @@
 &ring_indicator {
 	gpios = <&pio 1 2 GPIO_ACTIVE_LOW>; /* PB2 */
 };
+
+&sgm3140 {
+	flash-gpios = <&pio 2 3 GPIO_ACTIVE_HIGH>; /* PC3 */
+	enable-gpios = <&pio 3 24 GPIO_ACTIVE_HIGH>; /* PD24 */
+};

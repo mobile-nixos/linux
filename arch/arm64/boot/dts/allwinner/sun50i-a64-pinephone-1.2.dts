@@ -56,6 +56,11 @@
 	gpios = <&r_pio 0 6 GPIO_ACTIVE_LOW>; /* PL6 */
 };
 
+&sgm3140 {
+	flash-gpios = <&pio 2 3 GPIO_ACTIVE_HIGH>; /* PC3 */
+	enable-gpios = <&pio 3 24 GPIO_ACTIVE_HIGH>; /* PD24 */
+};
+
 &usbphy {
 	usb0_vbus_det-gpios = <&r_pio 0 9 GPIO_ACTIVE_HIGH>; /* PL9 */
 };

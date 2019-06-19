@@ -134,6 +134,15 @@
 		enable-active-high;
 	};
 
+	sgm3140: led-controller {
+		compatible = "sgmicro,sgm3140";
+
+		sgm3140_flash: led {
+			function = LED_FUNCTION_FLASH;
+			color = <LED_COLOR_ID_WHITE>;
+		};
+	};
+
 	speaker_amp: audio-amplifier {
 		compatible = "simple-audio-amplifier";
 		enable-gpios = <&pio 2 7 GPIO_ACTIVE_HIGH>; /* PC7 */
@@ -309,6 +318,8 @@
 		DVDD-supply = <&reg_eldo3>;
 		reset-gpios = <&pio 3 3 (GPIO_ACTIVE_LOW | GPIO_OPEN_DRAIN)>; /* PD3 */
 		powerdown-gpios = <&pio 2 0 (GPIO_ACTIVE_HIGH | GPIO_OPEN_DRAIN)>; /* PC0 */
+
+		flash-leds = <&sgm3140_flash>;
 
 		port {
 			ov5640_ep: endpoint {
