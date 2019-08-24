@@ -1,17 +1,18 @@
 // SPDX-License-Identifier: (GPL-2.0+ OR MIT)
-// Copyright (C) 2020 Ondrej Jirman <megous@megous.com>
+// Copyright (C) 2020 Samuel Holland <samuel@sholland.org>
 
 /dts-v1/;
 
 #include "sun50i-a64-pinephone.dtsi"
 
 / {
-	model = "Pine64 PinePhone Braveheart (1.1)";
-	compatible = "pine64,pinephone-1.1", "allwinner,sun50i-a64";
-};
+	model = "Pine64 PinePhone (1.2)";
+	compatible = "pine64,pinephone-1.2", "allwinner,sun50i-a64";
 
-&axp803 {
-	x-powers,drive-vbus-en;
+	wifi_pwrseq: wifi_pwrseq {
+		compatible = "mmc-pwrseq-simple";
+		reset-gpios = <&r_pio 0 2 GPIO_ACTIVE_LOW>; /* PL2 */
+	};
 };
 
 &backlight {
@@ -33,17 +34,28 @@
 	default-brightness-level = <400>;
 };
 
-&reg_drivevbus {
-	vin-supply = <&reg_vcc5v0>;
-	status = "okay";
+&lis3mdl {
+	interrupt-parent = <&pio>;
+	interrupts = <1 1 IRQ_TYPE_EDGE_RISING>; /* PB1 */
+};
+
+&mmc1 {
+	mmc-pwrseq = <&wifi_pwrseq>;
+};
+
+&reg_anx_vdd1v0 {
+	gpio = <&pio 3 11 GPIO_ACTIVE_HIGH>; /* PD11 */
+	enable-active-high;
 };
 
 &reg_usb0_vbus {
-	gpio = <&pio 3 6 GPIO_ACTIVE_HIGH>; /* PD6 */
-	enable-active-high;
-	vin-supply = <&reg_drivevbus>;
+	vin-supply = <&reg_vcc5v0>;
 };
 
 &ring_indicator {
-	gpios = <&pio 1 2 GPIO_ACTIVE_LOW>; /* PB2 */
+	gpios = <&r_pio 0 6 GPIO_ACTIVE_LOW>; /* PL6 */
+};
+
+&usbphy {
+	usb0_vbus_det-gpios = <&r_pio 0 9 GPIO_ACTIVE_HIGH>; /* PL9 */
 };
