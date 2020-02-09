@@ -3246,8 +3246,6 @@ struct drm_atomic_state *drm_atomic_helper_suspend(struct drm_device *dev)
 
 unlock:
 	DRM_MODESET_LOCK_ALL_END(ctx, err);
-	if (err)
-		return ERR_PTR(err);
 
 	return state;
 }
