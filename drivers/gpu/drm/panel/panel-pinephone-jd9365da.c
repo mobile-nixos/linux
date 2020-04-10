@@ -413,7 +413,7 @@ static int pinephone_get_modes(struct drm_panel *panel,
 	struct pinephone *ctx = panel_to_pinephone(panel);
 	struct drm_display_mode *mode;
 
-	mode = drm_mode_duplicate(panel->drm, &pinephone_default_mode);
+	mode = drm_mode_duplicate(connector->dev, &pinephone_default_mode);
 	if (!mode) {
 		DRM_DEV_ERROR(&ctx->dsi->dev, "failed to add mode %ux%ux@%u\n",
 			      pinephone_default_mode.hdisplay,
