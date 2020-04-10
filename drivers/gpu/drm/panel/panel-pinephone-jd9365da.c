@@ -407,9 +407,9 @@ static const struct drm_display_mode pinephone_default_mode = {
 	.height_mm	= 130,
 };
 
-static int pinephone_get_modes(struct drm_panel *panel)
+static int pinephone_get_modes(struct drm_panel *panel,
+			       struct drm_connector *connector)
 {
-	struct drm_connector *connector = panel->connector;
 	struct pinephone *ctx = panel_to_pinephone(panel);
 	struct drm_display_mode *mode;
 
@@ -425,8 +425,8 @@ static int pinephone_get_modes(struct drm_panel *panel)
 	drm_mode_set_name(mode);
 
 	drm_mode_probed_add(connector, mode);
-	panel->connector->display_info.width_mm = mode->width_mm;
-	panel->connector->display_info.height_mm = mode->height_mm;
+	connector->display_info.width_mm = mode->width_mm;
+	connector->display_info.height_mm = mode->height_mm;
 
 	return 1;
 }
