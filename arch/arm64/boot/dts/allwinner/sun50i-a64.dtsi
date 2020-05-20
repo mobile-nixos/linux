@@ -1121,7 +1121,7 @@
 			resets = <&ccu RST_BUS_GPU>;
 
 			assigned-clocks = <&ccu CLK_GPU>;
-			assigned-clock-rates = <432000000>;
+			assigned-clock-rates = <500000000>;
 		};
 
 		gic: interrupt-controller@1c81000 {
