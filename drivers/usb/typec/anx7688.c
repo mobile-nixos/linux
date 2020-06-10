@@ -377,6 +377,7 @@ err_poweroff:
                 dev_err(anx7688->dev, "failed to enable vconn\n");
                 goto err_poweroff;
         }
+	anx7688->vconn_on = true;
 
         /* wait till the firmware is loaded (typically ~30ms) */
         for (i = 0; i < 100; i++) {
@@ -496,6 +497,7 @@ fw_loaded:
 
 err_vconoff:
         regulator_disable(anx7688->supplies[ANX7688_VCONN_INDEX].consumer);
+	anx7688->vconn_on = false;
 err_poweroff:
         anx7688_power_disable(anx7688);
         return ret;
@@ -684,7 +686,7 @@ static int anx7688_update_status(struct anx7688 *anx7688)
 	}
 
 	if (anx7688->vconn_on != vconn_on) {
-		if (vbus_on) {
+		if (vconn_on) {
 			ret = regulator_enable(anx7688->supplies[ANX7688_VCONN_INDEX].consumer);
 			if (ret) {
 				dev_err(anx7688->dev, "failed to enable vconn\n");
