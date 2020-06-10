@@ -242,6 +242,31 @@
 &i2c0 {
 	status = "okay";
 
+	anx7688: hdmi-bridge@28 {
+		compatible = "analogix,anx7688";
+		reg = <0x28>;
+
+		interrupt-parent = <&r_pio>;
+		interrupts = <0 11 IRQ_TYPE_EDGE_FALLING>; /* PL11 */
+
+		enable-gpios = <&pio 3 10 GPIO_ACTIVE_LOW>; /* PD10 */
+		cabledet-gpios = <&r_pio 0 8 GPIO_ACTIVE_HIGH>; /* PL8 */
+
+		avdd10-supply = <&reg_anx_vdd1v0>;
+		dvdd10-supply = <&reg_anx_vdd1v0>;
+		avdd18-supply = <&reg_ldo_io1>;
+		dvdd18-supply = <&reg_ldo_io1>;
+		vconn-supply = <&reg_vconn5v0>;
+		hdmi_vt-supply = <&reg_dldo1>;
+		vbus-supply = <&reg_usb0_vbus>;
+
+		port {
+			typec0_drd_sw: endpoint {
+				remote-endpoint = <&usb0_drd_sw>;
+			};
+		};
+	};
+
 	touchscreen@5d {
 		compatible = "goodix,gt917s", "goodix,gt911";
 		reg = <0x5d>;
@@ -650,7 +675,7 @@
 };
 
 &usb_otg {
-	dr_mode = "peripheral";
+	dr_mode = "otg";
 	status = "okay";
 };
 
@@ -659,5 +684,12 @@
 };
 
 &usbphy {
+	usb-role-switch;
 	status = "okay";
+
+	port {
+		usb0_drd_sw: endpoint {
+			remote-endpoint = <&typec0_drd_sw>;
+		};
+	};
 };

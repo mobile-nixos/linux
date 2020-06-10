@@ -10,6 +10,11 @@
 	compatible = "pine64,pinephone-1.1", "allwinner,sun50i-a64";
 };
 
+&anx7688 {
+	reset-gpios = <&r_pio 0 9 GPIO_ACTIVE_HIGH>; /* PL9 */
+	avdd33-supply = <&reg_dldo1>;
+};
+
 &axp803 {
 	x-powers,drive-vbus-en;
 };
@@ -33,6 +38,11 @@
 	default-brightness-level = <400>;
 };
 
+/*
+ * The N_VBUSEN pin is disconnected, but we need to inform the PMIC about
+ * the VBUS status anyway. To avoid the pin from floating and to inform
+ * the PMIC, about VBUS status, we couple reg_drivevbus with reg_vbus.
+ */
 &reg_drivevbus {
 	vin-supply = <&reg_vcc5v0>;
 	status = "okay";

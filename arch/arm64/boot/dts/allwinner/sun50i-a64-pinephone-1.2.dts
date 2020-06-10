@@ -15,6 +15,11 @@
 	};
 };
 
+&anx7688 {
+	reset-gpios = <&pio 3 6 GPIO_ACTIVE_HIGH>; /* PD6 */
+	avdd33-supply = <&reg_dcdc1>;
+};
+
 &axp803 {
 	x-powers,sense-vbus-en;
 };
@@ -53,6 +58,10 @@
 };
 
 &reg_usb0_vbus {
+	/*
+	 * ANX7688 will enable/disable USB-5V <-> DCIN switch by itself
+	 * via VBUS_CTRL pin, so no GPIO is needed here.
+	 */
 	vin-supply = <&reg_vcc5v0>;
 };
 
