@@ -528,6 +528,8 @@ static void anx7688_disconnect(struct anx7688 *anx7688)
         typec_set_vconn_role(anx7688->port, TYPEC_SINK);
         typec_set_data_role(anx7688->port, TYPEC_DEVICE);
 
+	usb_role_switch_set_role(anx7688->role_sw, USB_ROLE_DEVICE);
+
 	clear_bit(ANX7688_F_CONNECTED, anx7688->flags);
 }
 
