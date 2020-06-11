@@ -172,7 +172,7 @@ struct anx7688 {
 	struct timer_list work_timer;
 
         struct mutex lock;
-        bool vbus_on, vconn_on, dr_dfp;
+        bool vbus_on, vconn_on;
 
         struct typec_port *port;
         struct typec_partner *partner;
@@ -528,9 +528,7 @@ static void anx7688_disconnect(struct anx7688 *anx7688)
         typec_set_vconn_role(anx7688->port, TYPEC_SINK);
         typec_set_data_role(anx7688->port, TYPEC_DEVICE);
 
-	if (anx7688->dr_dfp)
-		usb_role_switch_set_role(anx7688->role_sw, USB_ROLE_DEVICE);
-	anx7688->dr_dfp = 0;
+	usb_role_switch_set_role(anx7688->role_sw, USB_ROLE_NONE);
 
 	clear_bit(ANX7688_F_CONNECTED, anx7688->flags);
 }
@@ -743,9 +741,10 @@ static int anx7688_update_status(struct anx7688 *anx7688)
 
 	typec_set_data_role(anx7688->port, dr_dfp ? TYPEC_HOST : TYPEC_DEVICE);
 
-	if (anx7688->dr_dfp != dr_dfp) {
-		anx7688->dr_dfp = dr_dfp;
-		dev_dbg(anx7688->dev, "data role change requested to %s\n", dr_dfp ? "dfp" : "ufp");
+	if (usb_role_switch_get_role(anx7688->role_sw) !=
+	    (dr_dfp ? USB_ROLE_HOST : USB_ROLE_DEVICE)) {
+		dev_dbg(anx7688->dev, "data role change requested to %s\n",
+			dr_dfp ? "dfp" : "ufp");
 
 		ret = usb_role_switch_set_role(anx7688->role_sw,
 					       dr_dfp ? USB_ROLE_HOST : USB_ROLE_DEVICE);
@@ -1385,9 +1384,6 @@ static int anx7688_i2c_probe(struct i2c_client *client,
 		ret = PTR_ERR(anx7688->role_sw);
 		goto err_disable_reg;
 	}
-
-	if (usb_role_switch_get_role(anx7688->role_sw) != USB_ROLE_DEVICE)
-		usb_role_switch_set_role(anx7688->role_sw, USB_ROLE_DEVICE);
 
 	// setup a typec port device
         typec_cap.revision = USB_TYPEC_REV_1_2;
