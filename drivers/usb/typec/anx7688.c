@@ -184,6 +184,7 @@ struct anx7688 {
 	/* for debug */
 	int last_status;
 	int last_cc_status;
+	int last_dp_state;
 };
 
 static int anx7688_reg_read(struct anx7688 *anx7688, u8 reg_addr)
@@ -368,6 +369,7 @@ err_poweroff:
 
 	anx7688->last_status = -1;
 	anx7688->last_cc_status = -1;
+	anx7688->last_dp_state = -1;
 
         msleep(10);
         anx7688_power_enable(anx7688);
@@ -479,6 +481,27 @@ fw_loaded:
 	if (ret)
 		goto err_vconoff;
 
+	const u8 dp_snk_identity[16] = {
+		0x00, 0x00, 0x00, 0xec,	/* snk_id_hdr */
+		0x00, 0x00, 0x00, 0x00,	/* snk_cert */
+		0x00, 0x00, 0x00, 0x00,	/* snk_prd */
+		0x39, 0x00, 0x00, 0x51	/* snk_ama */
+	};
+
+	/* Send DP SNK identity */
+	ret = anx7688_send_ocm_message(anx7688, ANX7688_OCM_MSG_DP_SNK_IDENTITY,
+				       dp_snk_identity, sizeof dp_snk_identity);
+	if (ret)
+		goto err_vconoff;
+
+	const u8 svid[4] = {
+		0x00, 0x00, 0x01, 0xff,
+	};
+
+	ret = anx7688_send_ocm_message(anx7688, ANX7688_OCM_MSG_SVID,
+				       svid, sizeof svid);
+	if (ret)
+		goto err_vconoff;
 
         dev_dbg(anx7688->dev, "OCM configuration completed\n");
 
@@ -667,7 +690,7 @@ static int anx7688_update_status(struct anx7688 *anx7688)
 {
         struct device *dev = anx7688->dev;
 	bool vbus_on, vconn_on, dr_dfp;
-	int status, cc_status, ret;
+	int status, cc_status, dp_state, ret;
 	int cc1, cc2;
 
 	status = anx7688_reg_read(anx7688, ANX7688_REG_STATUS);
@@ -677,6 +700,10 @@ static int anx7688_update_status(struct anx7688 *anx7688)
 	cc_status = anx7688_reg_read(anx7688, ANX7688_REG_CC_STATUS);
 	if (cc_status < 0)
 		return cc_status;
+
+	dp_state = anx7688_tcpc_reg_read(anx7688, 0x87);
+	if (dp_state < 0)
+		return dp_state;
 
 	if (anx7688->last_status == -1 || anx7688->last_status != status) {
 		anx7688->last_status = status;
@@ -688,6 +715,11 @@ static int anx7688_update_status(struct anx7688 *anx7688)
 		dev_dbg(dev, "cc_status changed to CC1 = %s CC2 = %s\n",
 			anx7688_cc_status_string(cc_status & 0xf),
 			anx7688_cc_status_string((cc_status >> 4) & 0xf));
+	}
+
+	if (anx7688->last_dp_state == -1 || anx7688->last_dp_state != dp_state) {
+		anx7688->last_dp_state = dp_state;
+		dev_dbg(dev, "dp state changed to 0x%02x\n", dp_state);
 	}
 
 	vbus_on = !!(status & ANX7688_VBUS_STATUS);
