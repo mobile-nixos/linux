@@ -574,7 +574,7 @@ static void sun4i_usb_phy0_id_vbus_det_scan(struct work_struct *work)
 	data->force_session_end = false;
 
 	if (id_det != data->id_det) {
-		pr_err("phy id det update %d\n", id_det);
+		pr_err("phy id_det change to %s\n", id_det ? "device" : "host");
 
 		/* id-change, force session end if we've no vbus detection */
 		if (data->dr_mode == USB_DR_MODE_OTG &&
@@ -671,14 +671,12 @@ static int sun4i_usb_role_set(struct usb_role_switch *sw, enum usb_role role)
 
 	switch (role) {
 	case USB_ROLE_HOST:
-		pr_err("phy set role host\n");
 		data->role_switch_id_force = 0;
 		data->id_det = -1; /* Force reprocessing of id */
 		data->force_session_end = true;
 		queue_delayed_work(system_wq, &data->detect, 0);
 		return 0;
 	case USB_ROLE_DEVICE:
-		pr_err("phy set role device\n");
 		data->role_switch_id_force = 1;
 		data->id_det = -1; /* Force reprocessing of id */
 		data->force_session_end = true;
