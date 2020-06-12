@@ -155,6 +155,7 @@ static const char * const anx7688_supply_names[] = {
 enum {
 	ANX7688_F_POWERED,
 	ANX7688_F_CONNECTED,
+	ANX7688_F_FW_FAILED,
 };
 
 struct anx7688 {
@@ -394,7 +395,8 @@ err_poweroff:
                 msleep(5);
         }
 
-        dev_err(anx7688->dev, "boot firmware load failed\n");
+	set_bit(ANX7688_F_FW_FAILED, anx7688->flags);
+        dev_err(anx7688->dev, "boot firmware load failed (you may need to flash FW to anx7688 first)\n");
         ret = -ETIMEDOUT;
         goto err_vconoff;
 
@@ -1079,6 +1081,8 @@ static int anx7688_flash_firmware(struct anx7688 *anx7688)
                         goto err_unlock;
         }
 
+	clear_bit(ANX7688_F_FW_FAILED, anx7688->flags);
+
 err_unlock:
 	anx7688_power_disable(anx7688);
 	schedule_delayed_work(&anx7688->work, msecs_to_jiffies(20));
@@ -1301,6 +1305,9 @@ DEFINE_SHOW_ATTRIBUTE(anx7688_status);
 static void anx7688_work(struct work_struct *work)
 {
         struct anx7688 *anx7688 = container_of(work, struct anx7688, work.work);
+
+	if (test_bit(ANX7688_F_FW_FAILED, anx7688->flags))
+		return;
 
         anx7688_handle_cable_change(anx7688);
 
