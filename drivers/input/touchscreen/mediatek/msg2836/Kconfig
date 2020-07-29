@@ -1,0 +1,5 @@
+#
+# Touchscreen driver configuration
+#
+if TOUCHSCREEN_MSG2836
+endif

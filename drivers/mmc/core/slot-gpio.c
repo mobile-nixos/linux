@@ -18,6 +18,10 @@
 #include <linux/module.h>
 #include <linux/slab.h>
 
+//ranyanhao@wind-mobi.com 20161018 begin
+extern void msdc_sd_power_off_quick(void); //new add
+//ranyanhao@wind-mobi.com 20161018 end
+
 struct mmc_gpio {
 	struct gpio_desc *ro_gpio;
 	struct gpio_desc *cd_gpio;
@@ -31,7 +35,9 @@ static irqreturn_t mmc_gpio_cd_irqt(int irq, void *dev_id)
 {
 	/* Schedule a card detection after a debounce timeout */
 	struct mmc_host *host = dev_id;
-
+	//ranyanhao@wind-mobi.com 20161018 begin
+	msdc_sd_power_off_quick();//new add
+	//ranyanhao@wind-mobi.com 20161018 end
 	host->trigger_card_event = true;
 	mmc_detect_change(host, msecs_to_jiffies(200));
 
@@ -162,6 +168,8 @@ void mmc_gpiod_request_cd_irq(struct mmc_host *host)
 			ctx->cd_label, host);
 		if (ret < 0)
 			irq = ret;
+		else
+			enable_irq_wake(irq);
 	}
 
 	host->slot.cd_irq = irq;

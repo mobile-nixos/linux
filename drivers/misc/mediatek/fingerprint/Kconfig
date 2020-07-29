@@ -1,0 +1,53 @@
+#
+#Fingerprint
+#
+menu "Finger support"
+	depends on !UML
+
+config MTK_FINGERPRINT
+	tristate "Mediatek Fingerprint"
+	default y
+	---help---
+	Fingerprint mtk driver enable/disable in the kernel.
+	Say Y here if you want to use mediatek fingerprint driver,
+	fingerprint driver will support fingerprint function in REE,
+	it supports Goodix's GF316M/GF318M/GF3118M/GF518M/GF5118M/GF516M/GF816M/GF3208/GF5216... device.
+
+if MTK_FINGERPRINT
+
+config FPSENSOR_FINGERPRINT
+	bool "FPSENSOR_FINGERPRINT"
+	default n
+	---help---
+	LeaderCore Fingerprint chip TEE driver
+
+config GOODIX_FINGERPRINT
+	bool "GOODIX_FINGERPRINT"
+	default n
+	---help---
+	Goodix Fingerprint chip GF316M/GF318M/GF3118M/GF518M/GF5118M/GF516M/GF816M/GF3208/GF5216 TEE driver
+
+config GOODIX_SENSOR_TYPE
+	string "SENSOR_TYPE"
+	default "GF516M"
+	---help---
+	Must input sensor type, or default is GF316M GF318M GF3118M GF518M GF5118M GF516M GF816M GF3208 GF5216
+##liukangping 20170112 begin		
+config SUNWAVE_FINGERPRINT
+	bool "SUNWAVE_FINGERPRINT"
+	default n
+	---help---
+	Sunwave Fingerprint chip sw9562 TEE driver
+##liukangping 20170112 begin	
+
+##zhangkaiyuan@wind-mobi.com 20170914 begin		
+config MICROARRAY_FINGERPRINT
+	bool "MICROARRAY_FINGERPRINT"
+	default n
+	---help---
+	Microarray Fingerprint chip TEE driver
+##zhangkaiyuan@wind-mobi.com 20170914 end
+
+endif
+endmenu
+

@@ -7,5 +7,45 @@ mainmenu "Linux/$ARCH $KERNELVERSION Kernel Configuration"
 config SRCARCH
 	string
 	option env="SRCARCH"
+	
+##lvwenkang@wind-mobi.com 20161013 begin	  
+config	WIND_ASUS_DEMAND_SUPPORT
+	bool "WIND_ASUS_DEMAND_SUPPORT"
+	default n
+	help
+	  This macro definition just use ASUS
+##lvwenkang@wind-mobi.com 20161013 end
+
+##zhenglihong@wind-mobi.com 20170207 begin	  
+config	WIND_DEF_PRO_E266L
+	bool "WIND_DEF_PRO_E266L"
+	default n
+	help
+	  This macro definition just use E266L
+##zhenglihong@wind-mobi.com 20170207 end
+##zhenglihong@wind-mobi.com 20170207 begin	  
+config	WIND_DEF_PRO_E267L
+	bool "WIND_DEF_PRO_E267L"
+	default n
+	help
+	  This macro definition just use E267L
+##zhenglihong@wind-mobi.com 20170207 end
+
+
+##liukangping@wind-mobi.com 20170207 begin	  
+config	WIND_DEF_PRO_E260L
+	bool "WIND_DEF_PRO_E260L"
+	default n
+	help
+	  This macro definition just use E260L
+##liukangping@wind-mobi.com 20170207 end
+
+##wangbing@wind-mobi.com 20170901 begin
+config	WIND_DEF_PRO_E262L
+	bool "WIND_DEF_PRO_E262L"
+	default n
+	help
+	  This macro definition just use E262L
+##wangbing@wind-mobi.com 20170901 end
 
 source "arch/$SRCARCH/Kconfig"

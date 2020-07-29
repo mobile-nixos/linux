@@ -1,0 +1,15 @@
+config MTK_VIBRATOR
+    tristate "MediaTek Vibrator driver"
+    default n
+	---help---
+	Vibrator driver support for MediaTek SOC.
+	You can customize the vibrate strength and lowest vibrate time.
+	If you want to use MediaTek Vibrator driver, say Y or M here.
+	If unsure, say N.
+##zhangkaiyuan@wind-mobi.com 20170301 begin 
+config HAS_VIBRATION_INTENSITY
+  bool "CONFIG_HAS_VIBRATION_INTENSITY"
+  default n
+  help
+    CONFIG_HAS_VIBRATION_INTENSITY
+##zhangkaiyuan@wind-mobi.com 20170301 end

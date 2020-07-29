@@ -1,0 +1,7 @@
+#ranyanhao@wind-mobi.com 20151230 begin
+config MTK_EPL259X
+	bool "CONFIG_MTK_EPL259X"
+	default n
+	help
+		Select epl259x driver y or n
+#ranyanhao@wind-mobi.com 20151230 end

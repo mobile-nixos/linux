@@ -20,8 +20,25 @@
 #include <linux/usb/xhci_pdriver.h>
 
 #include "xhci.h"
+
+#ifdef CONFIG_USB_XHCI_MTK
+#include "xhci-mtk.h"
+#endif
+
 #include "xhci-mvebu.h"
 #include "xhci-rcar.h"
+#ifdef CONFIG_SSUSB_MTK_XHCI
+#include "xhci-ssusb-mtk.h"
+#endif
+
+//add by qiangang@wind-mobi.com 20161122 begin 
+#ifdef CONFIG_MTK_OTG_HAVE
+#include <linux/input.h>
+static struct input_dev *input = NULL;
+#define OTG_ID_KEY_IN   KEY_F11
+#define OTG_ID_KEY_OUT  KEY_F12
+#endif
+//add by qiangang@wind-mobi.com 20161122 end 
 
 static struct hc_driver __read_mostly xhci_plat_hc_driver;
 
@@ -33,6 +50,14 @@ static void xhci_plat_quirks(struct device *dev, struct xhci_hcd *xhci)
 	 * dev struct in order to setup MSI
 	 */
 	xhci->quirks |= XHCI_PLAT;
+#ifdef CONFIG_USB_XHCI_MTK
+	/*
+	 * MTK host controller gives a spurious successful event after a
+	 * short transfer. Ignore it.
+	*/
+	xhci->quirks |= XHCI_SPURIOUS_SUCCESS;
+	xhci->quirks |= XHCI_LPM_SUPPORT;
+#endif
 }
 
 /* called during probe() after chip reset completes */
@@ -40,6 +65,9 @@ static int xhci_plat_setup(struct usb_hcd *hcd)
 {
 	struct device_node *of_node = hcd->self.controller->of_node;
 	int ret;
+#ifdef CONFIG_SSUSB_MTK_XHCI
+	struct xhci_hcd *xhci;
+#endif
 
 	if (of_device_is_compatible(of_node, "renesas,xhci-r8a7790") ||
 	    of_device_is_compatible(of_node, "renesas,xhci-r8a7791")) {
@@ -47,8 +75,26 @@ static int xhci_plat_setup(struct usb_hcd *hcd)
 		if (ret)
 			return ret;
 	}
+#ifdef CONFIG_SSUSB_MTK_XHCI
+	ret = xhci_gen_setup(hcd, xhci_plat_quirks);
+	if (ret)
+		return ret;
 
+	if (!usb_hcd_is_primary_hcd(hcd))
+		return 0;
+
+	xhci = hcd_to_xhci(hcd);
+	ret = xhci_mtk_init_quirk(xhci);
+	if (ret) {
+		kfree(xhci);
+		return ret;
+	}
+	return ret;
+#else
 	return xhci_gen_setup(hcd, xhci_plat_quirks);
+#endif
+
+
 }
 
 static int xhci_plat_start(struct usb_hcd *hcd)
@@ -61,6 +107,20 @@ static int xhci_plat_start(struct usb_hcd *hcd)
 
 	return xhci_run(hcd);
 }
+#if defined(CONFIG_MTK_LM_MODE)
+#define XHCI_DMA_BIT_MASK DMA_BIT_MASK(64)
+#else
+#define XHCI_DMA_BIT_MASK DMA_BIT_MASK(32)
+#endif
+
+#ifdef CONFIG_USB_XHCI_MTK
+/*static u64 xhci_dma_mask = XHCI_DMA_BIT_MASK;*/
+
+static void xhci_hcd_release(struct device *dev)
+{
+	;
+}
+#endif
 
 static int xhci_plat_probe(struct platform_device *pdev)
 {
@@ -73,12 +133,33 @@ static int xhci_plat_probe(struct platform_device *pdev)
 	struct clk              *clk;
 	int			ret;
 	int			irq;
+#ifdef CONFIG_USB_XHCI_MTK
+	struct xhci_hcd_mtk *mtk;
+	struct device *dev = &pdev->dev;
+#endif
 
 	if (usb_disabled())
 		return -ENODEV;
 
 	driver = &xhci_plat_hc_driver;
+#ifdef CONFIG_USB_XHCI_MTK
+	mtk = devm_kzalloc(dev, sizeof(*mtk), GFP_KERNEL);
+	if (!mtk)
+		return -ENOMEM;
 
+	mtk->dev = dev;
+	irq = platform_get_irq_byname(pdev, XHCI_DRIVER_NAME);
+	if (irq < 0)
+		return -ENODEV;
+
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, XHCI_BASE_REGS_ADDR_RES_NAME);
+	if (!res)
+		return -ENODEV;
+
+/*	pdev->dev.coherent_dma_mask = XHCI_DMA_BIT_MASK;*/
+/*	pdev->dev.dma_mask = &xhci_dma_mask;*/
+	pdev->dev.release = xhci_hcd_release;
+#else
 	irq = platform_get_irq(pdev, 0);
 	if (irq < 0)
 		return irq;
@@ -86,7 +167,7 @@ static int xhci_plat_probe(struct platform_device *pdev)
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (!res)
 		return -ENODEV;
-
+#endif
 	/* Initialize dma_mask and coherent_dma_mask to 32-bits */
 	ret = dma_set_coherent_mask(&pdev->dev, DMA_BIT_MASK(32));
 	if (ret)
@@ -140,6 +221,13 @@ static int xhci_plat_probe(struct platform_device *pdev)
 
 	/* USB 2.0 roothub is stored in the platform_device now. */
 	hcd = platform_get_drvdata(pdev);
+
+#ifdef CONFIG_USB_XHCI_MTK
+	mtk->hcd = hcd;
+	platform_set_drvdata(pdev, mtk);
+	xhci_mtk_sch_init(mtk);
+#endif
+
 	xhci = hcd_to_xhci(hcd);
 	xhci->clk = clk;
 	xhci->shared_hcd = usb_create_shared_hcd(driver, &pdev->dev,
@@ -160,11 +248,48 @@ static int xhci_plat_probe(struct platform_device *pdev)
 
 	if (HCC_MAX_PSA(xhci->hcc_params) >= 4)
 		xhci->shared_hcd->can_do_streams = 1;
+	//qiangang@wind-mobi.com report key first
+	#ifdef CONFIG_MTK_OTG_HAVE
+	if(!input){
+		input = input_allocate_device();	
+		if(!input)	{		
+			printk("%s: qiangang input_allocate_device failed.\n", __func__);	
+			};	
+		__set_bit(EV_KEY, input->evbit);	
+		__set_bit(EV_ABS, input->evbit);	
+		__set_bit(EV_SYN, input->evbit);	
+		input_set_capability(input, EV_KEY, OTG_ID_KEY_IN);	
+		input_set_capability(input, EV_KEY, OTG_ID_KEY_OUT);	
+		__set_bit(OTG_ID_KEY_IN, input->evbit);
+		__set_bit(OTG_ID_KEY_OUT, input->evbit);	
+		input->name = "otgid";	
+		input->id.bustype = BUS_USB;	
+		ret = input_register_device(input);	
+		if (ret) {        
+			input_free_device(input);       
+			printk("%s: qiangangfailed to register input device.\n",__func__);          
+			}
+		}	
+	#endif
+	//qiangang@wind-mobi.com report key first end
 
 	ret = usb_add_hcd(xhci->shared_hcd, irq, IRQF_SHARED);
+	//qiangang@wind-mobi.com add report otg int key to the input hub begin
+	#ifdef CONFIG_MTK_OTG_HAVE
+	if(ret==0){	
+		input_report_key(input, OTG_ID_KEY_IN, 1);	    
+		input_sync(input);		
+		input_report_key(input, OTG_ID_KEY_IN, 0);	    
+		input_sync(input);	
+		printk("qiangang report the otg cable in  int event\n");
+	}
+	#endif
+	//qiangang@wind-mobi.com add report otg int key to the input hub end
 	if (ret)
 		goto put_usb3_hcd;
-
+#ifdef CONFIG_USB_XHCI_MTK
+	mtk_xhci_vbus_on(pdev);
+#endif
 	return 0;
 
 put_usb3_hcd:
@@ -185,19 +310,45 @@ put_hcd:
 
 static int xhci_plat_remove(struct platform_device *dev)
 {
+#ifdef CONFIG_USB_XHCI_MTK
+	struct xhci_hcd_mtk *mtk = platform_get_drvdata(dev);
+	struct usb_hcd	*hcd = mtk->hcd;
+#else
 	struct usb_hcd	*hcd = platform_get_drvdata(dev);
+#endif
 	struct xhci_hcd	*xhci = hcd_to_xhci(hcd);
 	struct clk *clk = xhci->clk;
 
+#ifdef CONFIG_USB_XHCI_MTK
+	mtk_xhci_vbus_off(dev);
+#endif
 	xhci->xhc_state |= XHCI_STATE_REMOVING;
 
 	usb_remove_hcd(xhci->shared_hcd);
 	usb_put_hcd(xhci->shared_hcd);
 
 	usb_remove_hcd(hcd);
+	//add by qiangang@wind-mobi.com 20161122 begin
+	#ifdef CONFIG_MTK_OTG_HAVE
+	input_report_key(input, OTG_ID_KEY_OUT, 1);	    
+	input_sync(input);		
+	input_report_key(input, OTG_ID_KEY_OUT, 0);	    
+	input_sync(input);
+	printk("qiangang report the otg cable out int event\n");
+	#endif
+	//add by qiangang@wind-mobi.com 20161122 end 
 	if (!IS_ERR(clk))
 		clk_disable_unprepare(clk);
 	usb_put_hcd(hcd);
+#ifdef CONFIG_SSUSB_MTK_XHCI
+	if (xhci->quirks & XHCI_MTK_HOST)
+		xhci_mtk_exit_quirk(xhci);
+#endif
+
+#ifdef CONFIG_USB_XHCI_MTK
+	mtk_xhci_reset(xhci);
+	xhci_mtk_sch_exit(mtk);
+#endif
 	kfree(xhci);
 
 	return 0;
@@ -244,6 +395,7 @@ static const struct of_device_id usb_xhci_of_match[] = {
 	{ .compatible = "marvell,armada-380-xhci"},
 	{ .compatible = "renesas,xhci-r8a7790"},
 	{ .compatible = "renesas,xhci-r8a7791"},
+	{ .compatible = "mediatek,usb3_xhci"},
 	{ },
 };
 MODULE_DEVICE_TABLE(of, usb_xhci_of_match);
@@ -254,12 +406,27 @@ static struct platform_driver usb_xhci_driver = {
 	.remove	= xhci_plat_remove,
 	.driver	= {
 		.name = "xhci-hcd",
+#ifndef CONFIG_USB_XHCI_MTK
 		.pm = DEV_PM_OPS,
+#endif
 		.of_match_table = of_match_ptr(usb_xhci_of_match),
 	},
 };
 MODULE_ALIAS("platform:xhci-hcd");
 
+#ifdef CONFIG_USB_XHCI_MTK
+int xhci_register_plat(void)
+{
+	xhci_init_driver(&xhci_plat_hc_driver, xhci_plat_setup);
+	xhci_plat_hc_driver.start = xhci_plat_start;
+	return platform_driver_register(&usb_xhci_driver);
+}
+
+void xhci_unregister_plat(void)
+{
+	platform_driver_unregister(&usb_xhci_driver);
+}
+#else
 static int __init xhci_plat_init(void)
 {
 	xhci_init_driver(&xhci_plat_hc_driver, xhci_plat_setup);
@@ -273,6 +440,7 @@ static void __exit xhci_plat_exit(void)
 	platform_driver_unregister(&usb_xhci_driver);
 }
 module_exit(xhci_plat_exit);
+#endif
 
 MODULE_DESCRIPTION("xHCI Platform Host Controller Driver");
 MODULE_LICENSE("GPL");

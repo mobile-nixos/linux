@@ -962,4 +962,5 @@ config TOUCHSCREEN_ZFORCE
 	  To compile this driver as a module, choose M here: the
 	  module will be called zforce_ts.
 
+source "drivers/input/touchscreen/synaptics_dsx_td4322/Kconfig"
 endif

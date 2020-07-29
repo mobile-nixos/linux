@@ -5,6 +5,13 @@
 # Rewritten to use lists instead of if-statements.
 #
 
+#ranyanhao@wind-mobi.com 20160929 begin
+ifeq ($(CONFIG_WIND_DEVICE_INFO),y)
+subdir-ccflags-y += -I$(srctree)/drivers/misc/mediatek/wind_device_info
+endif
+#ranyanhao@wind-mobi.com 20160929 end
+
+
 obj-y				+= irqchip/
 obj-y				+= bus/
 
@@ -60,6 +67,7 @@ obj-$(CONFIG_FB_I810)           += video/fbdev/i810/
 obj-$(CONFIG_FB_INTEL)          += video/fbdev/intelfb/
 
 obj-$(CONFIG_PARPORT)		+= parport/
+obj-$(CONFIG_TRUSTY)		+= trusty/
 obj-y				+= base/ block/ misc/ mfd/ nfc/
 obj-$(CONFIG_DMA_SHARED_BUFFER) += dma-buf/
 obj-$(CONFIG_NUBUS)		+= nubus/
@@ -118,6 +126,7 @@ obj-$(CONFIG_CPU_IDLE)		+= cpuidle/
 obj-y				+= mmc/
 obj-$(CONFIG_MEMSTICK)		+= memstick/
 obj-y				+= leds/
+obj-$(CONFIG_SWITCH)		+= switch/
 obj-$(CONFIG_INFINIBAND)	+= infiniband/
 obj-$(CONFIG_SGI_SN)		+= sn/
 obj-y				+= firmware/

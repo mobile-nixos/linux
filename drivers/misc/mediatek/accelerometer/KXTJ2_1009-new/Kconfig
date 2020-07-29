@@ -1,0 +1,7 @@
+#ranyanhao@wind-mobi.com 20151230 begin	  
+config MTK_KXTJ2_1009_NEW
+	bool "CONFIG_MTK_KXTJ2_1009_NEW"
+	default n
+	help 
+		Select KXTJ2_1009_NEW driver y or n
+#ranyanhao@wind-mobi.com 20151230 begin

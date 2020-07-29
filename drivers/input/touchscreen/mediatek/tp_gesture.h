@@ -1,0 +1,61 @@
+/************************************************************************
+** OWER: lihaiyan@wind-mobi.com
+** DATE: 20170412
+**
+** NOTICE ONE: What have you to do ?
+**  1. add  tp_gesture_proc_init() in xxx_prob() to init proc node
+**  2. add  tp_gesture_proc_remove() in xxx_remove() to remove proc node
+**
+** NOTICE TWO: How to use it ?
+**  1. /proc/wind_tp/wind_gesture 
+************************************************************************/
+
+#include <linux/fs.h>
+#include <linux/proc_fs.h>
+#include <linux/device.h>
+#include <linux/delay.h>
+#include "../../../../arch/powerpc/boot/stdlib.h"
+
+extern unsigned int g_GestureWakeupMode_wind;
+
+int tp_gesture_proc_init(void);
+void tp_gesture_proc_remove(void);
+
+#define GESTURE_MODE_DOUBLE_CLICK_FLAG     0x00000001    //0000 0000 0000 0000  0000 0000 0000 0001
+#define GESTURE_MODE_UP_DIRECT_FLAG        0x00000002    //0000 0000 0000 0000  0000 0000 0000 0010
+#define GESTURE_MODE_DOWN_DIRECT_FLAG      0x00000004    //0000 0000 0000 0000  0000 0000 0000 0100
+#define GESTURE_MODE_LEFT_DIRECT_FLAG      0x00000008    //0000 0000 0000 0000  0000 0000 0000 1000
+#define GESTURE_MODE_RIGHT_DIRECT_FLAG     0x00000010    //0000 0000 0000 0000  0000 0000 0001 0000
+#define GESTURE_MODE_M_FLAG                0x00000020    //0000 0000 0000 0000  0000 0000 0010 0000
+#define GESTURE_MODE_W_FLAG                0x00000040    //0000 0000 0000 0000  0000 0000 0100 0000
+#define GESTURE_MODE_C_FLAG                0x00000080    //0000 0000 0000 0000  0000 0000 1000 0000
+#define GESTURE_MODE_E_FLAG                0x00000100    //0000 0000 0000 0000  0000 0001 0000 0000
+#define GESTURE_MODE_V_FLAG                0x00000200    //0000 0000 0000 0000  0000 0010 0000 0000
+#define GESTURE_MODE_O_FLAG                0x00000400    //0000 0000 0000 0000  0000 0100 0000 0000
+#define GESTURE_MODE_S_FLAG                0x00000800    //0000 0000 0000 0000  0000 1000 0000 0000
+#define GESTURE_MODE_Z_FLAG                0x00001000    //0000 0000 0000 0000  0001 0000 0000 0000
+#define GESTURE_MODE_L_FLAG                0x00002000    //0000 0000 0000 0000  0010 0000 0000 0000
+
+#define GESTURE_MODE_RESERVE2_FLAG         0x00004000    //0000 0000 0000 0000  0100 0000 0000 0000
+#define GESTURE_MODE_RESERVE3_FLAG         0x00008000    //0000 0000 0000 0000  1000 0000 0000 0000
+#define GESTURE_MODE_RESERVE4_FLAG         0x00010000    //0000 0000 0000 0001  0000 0000 0000 0000
+#define GESTURE_MODE_RESERVE5_FLAG         0x00020000    //0000 0000 0000 0010  0000 0000 0000 0000
+#define GESTURE_MODE_RESERVE6_FLAG         0x00040000    //0000 0000 0000 0100  0000 0000 0000 0000
+#define GESTURE_MODE_RESERVE7_FLAG         0x00080000    //0000 0000 0000 1000  0000 0000 0000 0000
+#define GESTURE_MODE_RESERVE8_FLAG         0x00100000    //0000 0000 0001 0000  0000 0000 0000 0000
+#define GESTURE_MODE_RESERVE9_FLAG         0x00200000    //0000 0000 0010 0000  0000 0000 0000 0000
+#define GESTURE_MODE_RESERVE10_FLAG        0x00400000    //0000 0000 0100 0000  0000 0000 0000 0000
+#define GESTURE_MODE_RESERVE11_FLAG        0x00800000    //0000 0000 1000 0000  0000 0000 0000 0000
+#define GESTURE_MODE_RESERVE12_FLAG        0x01000000    //0000 0001 0000 0000  0000 0000 0000 0000
+#define GESTURE_MODE_RESERVE13_FLAG        0x02000000    //0000 0010 0000 0000  0000 0000 0000 0000
+#define GESTURE_MODE_RESERVE14_FLAG        0x04000000    //0000 0100 0000 0000  0000 0000 0000 0000
+#define GESTURE_MODE_RESERVE15_FLAG        0x08000000    //0000 1000 0000 0000  0000 0000 0000 0000
+#define GESTURE_MODE_RESERVE16_FLAG        0x10000000    //0001 0000 0000 0000  0000 0000 0000 0000
+#define GESTURE_MODE_RESERVE17_FLAG        0x20000000    //0010 0000 0000 0000  0000 0000 0000 0000
+#define GESTURE_MODE_RESERVE18_FLAG        0x40000000    //0100 0000 0000 0000  0000 0000 0000 0000
+#define GESTURE_MODE_RESERVE19_FLAG        0x80000000    //1000 0000 0000 0000  0000 0000 0000 0000
+
+/************************************************************************
+** OWER: lihaiyan@wind-mobi.com
+** DATE: 20170412
+************************************************************************/

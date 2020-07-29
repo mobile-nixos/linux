@@ -3,9 +3,10 @@
 #
 
 #   IPv6 as module will cause a CRASH if you try to unload it
+# liqiang@wind-mobi.com 20170512 begin
 menuconfig IPV6
 	tristate "The IPv6 protocol"
-	default m
+	default y
 	---help---
 	  This is complemental support for the IP version 6.
 	  You will still be able to do traditional IPv4 networking as well.
@@ -18,7 +19,7 @@ menuconfig IPV6
 
 	  To compile this protocol support as a module, choose M here: the 
 	  module will be called ipv6.
-
+# liqiang@wind-mobi.com 20170512 begin
 if IPV6
 
 config IPV6_ROUTER_PREF
@@ -257,5 +258,19 @@ config IPV6_PIMSM_V2
 	---help---
 	  Support for IPv6 PIM multicast routing protocol PIM-SMv2.
 	  If unsure, say N.
+
+config MTK_DHCPV6C_WIFI
+	bool "dhcpv6 on wifi"
+	default y
+
+
+config MTK_IPV6_VZW
+	bool "IPV6: RS triggering to extend route lifetime"
+	depends on IPV6
+	default n
+	---help---
+	  VzW REQ6378 propose that RS should be sent to request RA from gateway
+	  for extending ipv6 route lifetime. the feature is developed to meet
+	  VzW's demandings and should be disabled by default.
 
 endif # IPV6

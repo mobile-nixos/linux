@@ -1,0 +1,131 @@
+#include <linux/videodev2.h>
+#include <linux/i2c.h>
+#include <linux/platform_device.h>
+#include <linux/delay.h>
+#include <linux/cdev.h>
+#include <linux/uaccess.h>
+#include <linux/fs.h>
+#include <asm/atomic.h>
+#include <linux/slab.h>
+
+#ifdef S5K3L8_GZ_PDAFOTP_DEBUG
+/*===FEATURE SWITH===*/
+ // #define FPTPDAFSUPPORT   //for pdaf switch
+ // #define FANPENGTAO   //for debug log
+ //#define LOG_INF LOG_INF_LOD
+/*===FEATURE SWITH===*/
+
+/****************************Modify Following Strings for Debug****************************/
+#define PFX "S5K3L8PDAF"
+#define LOG_INF(format, args...)    pr_debug(PFX "[%s] " format, __FUNCTION__, ##args)
+#else
+#define LOG_INF(format, args...)
+#endif
+/****************************   Modify end    *******************************************/
+
+#include "kd_camera_hw.h"
+#include "kd_imgsensor.h"
+#include "kd_imgsensor_define.h"
+#include "kd_imgsensor_errcode.h"
+
+extern int iReadRegI2C(u8 *a_pSendData , u16 a_sizeSendData, u8 * a_pRecvData, u16 a_sizeRecvData, u16 i2cId);
+extern int iWriteRegI2C(u8 *a_pSendData , u16 a_sizeSendData, u16 i2cId);
+extern void kdSetI2CSpeed(u16 i2cSpeed);
+//extern int iBurstWriteReg_multi(u8 *pData, u32 bytes, u16 i2cId, u16 transfer_length);
+extern int iMultiReadReg(u16 a_u2Addr , u8 * a_puBuff , u16 i2cId, u8 number);
+
+
+#define USHORT             unsigned short
+#define BYTE               unsigned char
+#define Sleep(ms)          mdelay(ms)
+
+/**************  CONFIG BY SENSOR >>> ************/
+#define EEPROM_READ_ID   0xA1
+#define EEPROM_WRITE_ID   0xA0
+#define I2C_SPEED        100  
+#define MAX_OFFSET		    0xFFFF
+#define DATA_SIZE         2408
+#define START_ADDR        0X0781
+BYTE S5K3L8_gz_eeprom_pdaf_data[DATA_SIZE]= {0};
+static bool get_done = false;
+static int last_size = 0;
+static int last_offset = 0;
+
+/**************  CONFIG BY SENSOR <<< ************/
+static kal_uint8 read_cmos_sensor_byte(kal_uint16 addr)
+{
+    kal_uint8 get_byte=0;
+    char pu_send_cmd[2] = {(char)(addr >> 8) , (char)(addr & 0xFF) };
+
+    kdSetI2CSpeed(I2C_SPEED); // Add this func to set i2c speed by each sensor
+    iReadRegI2C(pu_send_cmd , 2, (u8*)&get_byte,1,EEPROM_WRITE_ID);
+    return get_byte;
+}
+
+static bool selective_read_eeprom(kal_uint16 addr, BYTE* data)
+{
+    char pu_send_cmd[2] = {(char)(addr >> 8) , (char)(addr & 0xFF) };
+    if(addr > MAX_OFFSET)
+    {    
+        return false;
+    }
+
+    kdSetI2CSpeed(I2C_SPEED);
+
+    if(iReadRegI2C(pu_send_cmd, 2, (u8*)data, 1, EEPROM_WRITE_ID)<0)
+    {
+        return false;
+    }
+
+    return true;
+}
+
+
+static bool _read_eeprom(kal_uint16 addr, BYTE* data, kal_uint32 size ){
+  //continue read reg by byte:
+  int i=0;
+	int offset = addr;
+	for(i = 0; i < size; i++) {
+		if(!selective_read_eeprom(offset, &data[i])){
+			return false;
+		}
+		LOG_INF("read_eeprom 0x%0x %d\n",offset, data[i]);
+		offset++;
+	}
+	get_done = true;
+	last_size = size;
+	last_offset = addr;
+    return true;
+}
+
+bool S5K3L8_gz_read_eeprom_pdaf( kal_uint16 addr, BYTE* data, kal_uint32 size)
+{
+	addr = START_ADDR;
+	size = DATA_SIZE;
+	
+	LOG_INF("Read EEPROM, addr = 0x%x, size = 0d%d\n", addr, size);
+
+	if(!get_done || last_size != size || last_offset != addr) {
+		if(!_read_eeprom(addr, S5K3L8_gz_eeprom_pdaf_data, size)){
+			get_done = 0;
+            last_size = 0;
+            last_offset = 0;
+			return false;
+		}
+	}
+
+	memcpy(data, S5K3L8_gz_eeprom_pdaf_data, size);
+	return true;
+}
+
+kal_uint8 S5K3L8_gz_read_eeprom_module_id(void )
+{ 
+          kal_uint8  module_id;
+
+           kal_uint16 module_id_addr = 0x0F74 ;
+           module_id =  read_cmos_sensor_byte(module_id_addr);
+	
+	return module_id;
+}
+
+

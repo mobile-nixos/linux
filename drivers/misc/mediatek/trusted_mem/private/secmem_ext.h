@@ -1,0 +1,23 @@
+/*
+ * Copyright (C) 2018 MediaTek Inc.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ */
+
+#ifndef SECMEM_EXTERN_H
+#define SECMEM_EXTERN_H
+
+#if defined(CONFIG_MTK_SECURE_MEM_SUPPORT)
+int secmem_svp_dump_info(void);
+int secmem_dynamic_debug_control(bool enable_dbg);
+int secmem_force_hw_protection(void);
+#endif
+
+#endif /* end of SECMEM_EXTERN_H */

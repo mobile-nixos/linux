@@ -1,0 +1,19 @@
+
+config MTK_LSM6DS3
+	bool "ST LSM6DS3 accelerometer driver for MediaTek package"
+	default n
+	help
+	  To claim the support of LSM6DS3 accelerometer driver.
+	  If this option is set,
+	  it will support LSM6DS3 Accelerometer.
+	  If unsure,say N.
+	  
+
+config CUSTOM_KERNEL_SIGNIFICANT_MOTION_SENSOR    
+	bool "CUSTOM_KERNEL_SIGNIFICANT_MOTION_SENSOR"
+	default n
+	help
+	  Kernel space sigificant motion sensor driver.
+	  If this option is set,
+	  it will support LSM6DS3 Accelerometer.
+	  If unsure,say N.
