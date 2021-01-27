@@ -1,4 +1,4 @@
-/* Copyright (c) 2013-2017, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2019, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -102,11 +102,14 @@ struct cnss_platform_cap {
 	u32 cap_flag;
 };
 
-/* WLAN driver status */
+/* WLAN driver status, keep it aligned with cnss2 */
 enum cnss_driver_status {
 	CNSS_UNINITIALIZED,
 	CNSS_INITIALIZED,
-	CNSS_LOAD_UNLOAD
+	CNSS_LOAD_UNLOAD,
+	CNSS_RECOVERY,
+	CNSS_FW_DOWN,
+	CNSS_SSR_FAIL,
 };
 
 enum cnss_runtime_request {
@@ -199,6 +202,13 @@ enum {
 	CNSS_RESET_SUBSYS_COUPLED,
 	CNSS_RESET_LEVEL_MAX
 };
+
+enum cnss_sleep_power_mode {
+	CNSS_SLEEP_POWER_MODE_NONE,
+	CNSS_SLEEP_POWER_MODE_RESET,
+	CNSS_SLEEP_POWER_MODE_CUT_PWR,
+};
+
 extern int cnss_get_restart_level(void);
 
 struct cnss_sdio_wlan_driver {
@@ -263,6 +273,6 @@ extern int cnss_common_register_tsf_captured_handler(struct device *dev,
 						     void *ctx);
 extern int cnss_common_unregister_tsf_captured_handler(struct device *dev,
 						       void *ctx);
-extern void cnss_set_fw_version(u32 version);
-
+extern int cnss_common_set_sleep_power_mode(struct device *dev,
+					    enum cnss_sleep_power_mode mode);
 #endif /* _NET_CNSS_H_ */
