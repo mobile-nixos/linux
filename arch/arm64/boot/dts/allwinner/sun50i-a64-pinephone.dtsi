@@ -326,6 +326,20 @@
 		mode-menu       = <0xb00100ff>;
 	};
 
+	reserved-memory {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		ranges;
+
+		/* 128MiB is documented as being required for the cameras. */
+		cma: linux,cma {
+			compatible = "shared-dma-pool";
+			size = <0x8000000>; /* 128MiB */
+			reusable;
+			linux,cma-default;
+		};
+	};
+
 	speaker_amp: audio-amplifier {
 		compatible = "simple-audio-amplifier";
 		enable-gpios = <&pio 2 7 GPIO_ACTIVE_HIGH>; /* PC7 */
