@@ -44,6 +44,8 @@
 #define SMEM_IMAGE_VERSION_OEM_OFFSET 96
 #define SMEM_IMAGE_VERSION_PARTITION_APPS 10
 
+#define JRD_SEC_MEI_SYNC 1
+
 static DECLARE_RWSEM(current_image_rwsem);
 enum {
 	HW_PLATFORM_UNKNOWN = 0,
@@ -583,6 +585,33 @@ uint32_t socinfo_get_raw_version(void)
 		: 0;
 }
 
+//Modify by wenzhao.guo, secure status interface for AP for[Task-2855336] on 09/19/2016 start
+#if defined(JRD_SEC_MEI_SYNC)
+static ssize_t
+msm_get_oem_efuse(struct device *dev,
+                    struct device_attribute *attr,
+                    char *buf)
+{
+       uint32_t *efuse = NULL;
+
+       efuse = smem_alloc(SMEM_VERSION_OEM_STATUS, 2*sizeof(uint32_t),0,SMEM_ANY_HOST_FLAG);
+       if(efuse != NULL){
+	           char tempstr[10];
+               if(0x7f == *(efuse+1))
+			       snprintf(tempstr, PAGE_SIZE, "locked");
+			   else
+			       snprintf(tempstr, PAGE_SIZE, "nolock");
+               pr_info("[STinfo]----efuse = %x     boot1_lock = %x\n",*efuse,*(efuse+1));
+               if((*efuse) & 0x1)
+                       return snprintf(buf, PAGE_SIZE, "efuse,rb ver:%x,boot1:%s ",(*efuse)>>16,tempstr);
+               else
+                       return snprintf(buf, PAGE_SIZE, "non-efuse,boot1:%s",tempstr);
+       }
+       return snprintf(buf, PAGE_SIZE, "efuse check error\n" );
+}
+#endif
+//Modify by wenzhao.guo, secure status interface for AP for [Task-2855336] on 09/19/2016 end
+
 uint32_t socinfo_get_platform_type(void)
 {
 	return socinfo ?
@@ -957,6 +986,12 @@ msm_select_image(struct device *dev, struct device_attribute *attr,
 	return count;
 }
 
+//Modify by wenzhao.guo, secure status interface for AP for [Task-2855336] on 09/19/2016 start
+#if defined(JRD_SEC_MEI_SYNC)
+static struct device_attribute msm_soc_attr_oem_efuse =
+       __ATTR(oem_efuse, S_IRUGO, msm_get_oem_efuse,  NULL);
+#endif
+//Modify by wenzhao.guo, secure status interface for AP for [Task-2855336] on 09/19/2016 end
 
 static struct device_attribute msm_soc_attr_raw_version =
 	__ATTR(raw_version, S_IRUGO, msm_get_raw_version,  NULL);
@@ -1083,6 +1118,9 @@ static void __init populate_soc_sysfs_files(struct device *msm_soc_device)
 	device_create_file(msm_soc_device, &image_variant);
 	device_create_file(msm_soc_device, &image_crm_version);
 	device_create_file(msm_soc_device, &select_image);
+#if defined(JRD_SEC_MEI_SYNC)
+	device_create_file(msm_soc_device, &msm_soc_attr_oem_efuse);
+#endif
 
 	switch (legacy_format) {
 	case 10:

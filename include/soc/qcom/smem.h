@@ -101,6 +101,9 @@ enum {
 	SMEM_BATT_INFO,
 	SMEM_APPS_BOOT_MODE,
 	SMEM_VERSION_FIRST,
+//Modify by wenzhao.guo, seucre status interface for AP for [Task-2855336] on 09/19/2016 start
+	SMEM_VERSION_OEM_STATUS=115,
+//Modify by wenzhao.guo, seucre status interface for AP for [Task-2855336] on 09/19/2016 end
 	SMEM_VERSION_SMD = SMEM_VERSION_FIRST,
 	SMEM_VERSION_LAST = SMEM_VERSION_FIRST + 24,
 	SMEM_OSS_RRCASN1_BUF1,
