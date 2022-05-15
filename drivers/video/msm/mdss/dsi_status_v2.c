@@ -103,6 +103,8 @@ void mdp3_check_dsi_ctrl_status(struct work_struct *work,
 			pr_err("%s: Panel has gone bad, sending uevent - %s\n",
 							__func__, envp[0]);
 		}
+	} else {
+		pr_err("%s: esd!\n", __func__);
 	}
 }
 
@@ -114,7 +116,7 @@ void mdp3_check_spi_panel_status(struct work_struct *work,
 	struct mdss_panel_data *pdata = NULL;
 	struct spi_panel_data *ctrl_pdata = NULL;
 	struct mdp3_session_data *mdp3_session = NULL;
-	int ret = 0;
+	bool is_panel_status_okay = true;
 
 	pdsi_status = container_of(to_delayed_work(work),
 		struct dsi_status_data, check_status);
@@ -159,24 +161,21 @@ void mdp3_check_spi_panel_status(struct work_struct *work,
 		return;
 	}
 
-	if (!ret)
-		ret = ctrl_pdata->check_status(ctrl_pdata);
-	else
-		pr_err("%s: wait_for_dma_done error\n", __func__);
+	is_panel_status_okay = ctrl_pdata->check_status(ctrl_pdata);
 	mutex_unlock(&mdp3_session->lock);
 
 	if (mdss_fb_is_power_on_interactive(pdsi_status->mfd)) {
-		if (ret > 0) {
+		if (is_panel_status_okay) {
 			schedule_delayed_work(&pdsi_status->check_status,
-						msecs_to_jiffies(interval));
+					msecs_to_jiffies(interval));
 		} else {
 			char *envp[2] = {"PANEL_ALIVE=0", NULL};
 			pdata->panel_info.panel_dead = true;
-			ret = kobject_uevent_env(
+			kobject_uevent_env(
 					&pdsi_status->mfd->fbi->dev->kobj,
 					KOBJ_CHANGE, envp);
 			pr_err("%s: Panel has gone bad, sending uevent - %s\n",
-							__func__, envp[0]);
+					__func__, envp[0]);
 		}
 	}
 }

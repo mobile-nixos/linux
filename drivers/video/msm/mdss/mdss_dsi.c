@@ -726,14 +726,14 @@ static int mdss_dsi_unblank(struct mdss_panel_data *pdata)
 		}
 		ctrl_pdata->ctrl_state |= CTRL_STATE_PANEL_INIT;
 	}
-
+#if 1
 	if ((pdata->panel_info.type == MIPI_CMD_PANEL) &&
 		mipi->vsync_enable && mipi->hw_vsync_mode) {
 		mdss_dsi_set_tear_on(ctrl_pdata);
 		if (mdss_dsi_is_te_based_esd(ctrl_pdata))
 			enable_irq(gpio_to_irq(ctrl_pdata->disp_te_gpio));
 	}
-
+#endif
 error:
 	mdss_dsi_clk_ctrl(ctrl_pdata, DSI_ALL_CLKS, 0);
 	pr_debug("%s-:\n", __func__);
@@ -786,7 +786,7 @@ static int mdss_dsi_blank(struct mdss_panel_data *pdata, int power_state)
 			mdss_dsi_set_tear_off(ctrl_pdata);
 		}
 	}
-
+#if 1
 	if ((pdata->panel_info.type == MIPI_CMD_PANEL) &&
 		mipi->vsync_enable && mipi->hw_vsync_mode) {
 		if (mdss_dsi_is_te_based_esd(ctrl_pdata)) {
@@ -796,7 +796,7 @@ static int mdss_dsi_blank(struct mdss_panel_data *pdata, int power_state)
 		}
 		mdss_dsi_set_tear_off(ctrl_pdata);
 	}
-
+#endif
 	if (ctrl_pdata->ctrl_state & CTRL_STATE_PANEL_INIT) {
 		if (!pdata->panel_info.dynamic_switch_pending) {
 			ret = ctrl_pdata->off(pdata);
@@ -1600,7 +1600,7 @@ static int mdss_dsi_ctrl_probe(struct platform_device *pdev)
 	ctrl_pdata->cmd_clk_ln_recovery_en =
 		of_property_read_bool(pdev->dev.of_node,
 			"qcom,dsi-clk-ln-recovery");
-
+#if 1
 	if (mdss_dsi_is_te_based_esd(ctrl_pdata)) {
 		rc = devm_request_irq(&pdev->dev,
 			gpio_to_irq(ctrl_pdata->disp_te_gpio),
@@ -1612,6 +1612,7 @@ static int mdss_dsi_ctrl_probe(struct platform_device *pdev)
 		}
 		disable_irq(gpio_to_irq(ctrl_pdata->disp_te_gpio));
 	}
+#endif
 	pr_debug("%s: Dsi Ctrl->%d initialized\n", __func__, index);
 	return 0;
 
