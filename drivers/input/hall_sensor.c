@@ -32,27 +32,31 @@
 struct hall_data {
 	int gpio;	/* device use gpio number */
 	int irq;	/* device request irq number */
-	int active_low;	/* gpio active high or low for valid value */
 	bool wakeup;	/* device can wakeup system or not */
 	struct input_dev *hall_dev;
 	struct regulator *vddio;
 	u32 min_uv;	/* device allow minimum voltage */
 	u32 max_uv;	/* device allow max voltage */
+	const char *dev_name;
+	const char *gpio_name;
+	const char *irq_name;
+	const char *input_name;
+	int status;
 };
 
 static irqreturn_t hall_interrupt_handler(int irq, void *dev)
 {
 	int value;
 	struct hall_data *data = dev;
-
-	value = (gpio_get_value_cansleep(data->gpio) ? 1 : 0) ^
-		data->active_low;
+	value = gpio_get_value_cansleep(data->gpio);
 	if (value) {
-		input_report_switch(data->hall_dev, SW_LID, 0);
+		input_report_key(data->hall_dev, KEY_HALL, 0);
 		dev_dbg(&data->hall_dev->dev, "far\n");
+		data->status = 1;
 	} else {
-		input_report_switch(data->hall_dev, SW_LID, 1);
+		input_report_key(data->hall_dev, KEY_HALL, 1);
 		dev_dbg(&data->hall_dev->dev, "near\n");
+		data->status = 0;
 	}
 	input_sync(data->hall_dev);
 
@@ -70,10 +74,16 @@ static int hall_input_init(struct platform_device *pdev,
 				"input device allocation failed\n");
 		return -EINVAL;
 	}
-	data->hall_dev->name = LID_DEV_NAME;
-	data->hall_dev->phys = HALL_INPUT;
+	data->hall_dev->name = data->dev_name;
+	data->hall_dev->phys = data->input_name;
+	//input register type change from switch type to key type.
+	/*	
 	__set_bit(EV_SW, data->hall_dev->evbit);
 	__set_bit(SW_LID, data->hall_dev->swbit);
+	*/
+
+    __set_bit(EV_KEY, data->hall_dev->evbit);
+	__set_bit(KEY_HALL, data->hall_dev->keybit);
 
 	err = input_register_device(data->hall_dev);
 	if (err < 0) {
@@ -163,13 +173,14 @@ static int hall_parse_dt(struct device *dev, struct hall_data *data)
 	int rc;
 	struct device_node *np = dev->of_node;
 
+	//default hall gpio status is high
+
 	data->gpio = of_get_named_gpio_flags(dev->of_node,
 			"linux,gpio-int", 0, &tmp);
 	if (!gpio_is_valid(data->gpio)) {
 		dev_err(dev, "hall gpio is not valid\n");
 		return -EINVAL;
 	}
-	data->active_low = tmp & OF_GPIO_ACTIVE_LOW ? 0 : 1;
 
 	data->wakeup = of_property_read_bool(np, "linux,wakeup");
 
@@ -187,6 +198,30 @@ static int hall_parse_dt(struct device *dev, struct hall_data *data)
 	}
 	data->min_uv = tempval;
 
+	rc = of_property_read_string(np, "hall,gpio_name", &data->gpio_name);
+	if (rc && (rc != -EINVAL)) {
+		dev_err(dev, "unable to read gpio name!\n");
+		return -EINVAL;
+	}
+
+	rc = of_property_read_string(np, "hall,irq_name", &data->irq_name);
+	if (rc && (rc != -EINVAL)) {
+		dev_err(dev, "unable to read irq name!\n");
+		return -EINVAL;
+	}
+
+	rc = of_property_read_string(np, "hall,dev_name", &data->dev_name);
+	if (rc && (rc != -EINVAL)) {
+		dev_err(dev, "unable to read device name!\n");
+		return -EINVAL;
+	}
+
+	rc = of_property_read_string(np, "hall,input_name", &data->input_name);
+	if (rc && (rc != -EINVAL)) {
+		dev_err(dev, "unable to read input name!\n");
+		return -EINVAL;
+	}
+
 	return 0;
 }
 #else
@@ -195,6 +230,15 @@ static int hall_parse_dt(struct device *dev, struct hall_data *data)
 	return -EINVAL;
 }
 #endif
+
+
+ssize_t hall_status_show(struct device *dev,struct device_attribute *attr,char *buf)
+{
+	struct hall_data * data = dev_get_drvdata(dev);
+	return sprintf(buf,"%d",data->status ? 0 : 1);
+}
+
+DEVICE_ATTR(hall_status,S_IRUGO,hall_status_show,NULL);
 
 static int hall_driver_probe(struct platform_device *dev)
 {
@@ -239,7 +283,7 @@ static int hall_driver_probe(struct platform_device *dev)
 
 	irq_flags = IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING
 		| IRQF_ONESHOT;
-	err = gpio_request_one(data->gpio, GPIOF_DIR_IN, "hall_sensor_irq");
+	err = gpio_request_one(data->gpio, GPIOF_DIR_IN, data->gpio_name);
 	if (err) {
 		dev_err(&dev->dev, "unable to request gpio %d\n", data->gpio);
 		goto exit;
@@ -248,7 +292,7 @@ static int hall_driver_probe(struct platform_device *dev)
 	data->irq = gpio_to_irq(data->gpio);
 	err = devm_request_threaded_irq(&dev->dev, data->irq, NULL,
 			hall_interrupt_handler,
-			irq_flags, "hall_sensor", data);
+			irq_flags, data->irq_name, data);
 	if (err < 0) {
 		dev_err(&dev->dev, "request irq failed : %d\n", data->irq);
 		goto free_gpio;
@@ -268,6 +312,17 @@ static int hall_driver_probe(struct platform_device *dev)
 		dev_err(&dev->dev, "power on failed: %d\n", err);
 		goto err_regulator_init;
 	}
+
+	device_create_file(&dev->dev,&dev_attr_hall_status);
+
+	//the logic is same as interrupt handler
+	data->status = gpio_get_value_cansleep(data->gpio);
+	if (data->status) {
+		input_report_key(data->hall_dev, KEY_HALL, 0);
+	} else {
+		input_report_key(data->hall_dev, KEY_HALL, 1);
+	}
+	input_sync(data->hall_dev);
 
 	return 0;
 
