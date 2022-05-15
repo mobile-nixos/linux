@@ -53,6 +53,7 @@
 #define WCD_MBHC_BTN_PRESS_COMPL_TIMEOUT_MS  50
 
 static int det_extn_cable_en;
+static int headset_plug;
 module_param(det_extn_cable_en, int,
 		S_IRUGO | S_IWUSR | S_IWGRP);
 MODULE_PARM_DESC(det_extn_cable_en, "enable/disable extn cable detect");
@@ -63,6 +64,11 @@ enum wcd_mbhc_cs_mb_en_flag {
 	WCD_MBHC_EN_PULLUP,
 	WCD_MBHC_EN_NONE,
 };
+
+static ssize_t headset_status_show(struct class *class, struct class_attribute *attr, char *buf)
+{
+	return sprintf(buf,"%d\n",headset_plug);
+}
 
 static void wcd_mbhc_jack_report(struct wcd_mbhc *mbhc,
 				struct snd_soc_jack *jack, int status, int mask)
@@ -570,6 +576,7 @@ static void wcd_mbhc_report_plug(struct wcd_mbhc *mbhc, int insertion,
 		hphrocp_off_report(mbhc, SND_JACK_OC_HPHR);
 		hphlocp_off_report(mbhc, SND_JACK_OC_HPHL);
 		mbhc->current_plug = MBHC_PLUG_TYPE_NONE;
+		headset_plug = 0;
 	} else {
 		/*
 		 * Report removal of current jack type.
@@ -675,6 +682,7 @@ static void wcd_mbhc_report_plug(struct wcd_mbhc *mbhc, int insertion,
 				    (mbhc->hph_status | SND_JACK_MECHANICAL),
 				    WCD_MBHC_JACK_MASK);
 		wcd_mbhc_clr_and_turnon_hph_padac(mbhc);
+		headset_plug = 1;
 	}
 	pr_debug("%s: leave hph_status %x\n", __func__, mbhc->hph_status);
 }
@@ -2096,6 +2104,11 @@ void wcd_mbhc_stop(struct wcd_mbhc *mbhc)
 }
 EXPORT_SYMBOL(wcd_mbhc_stop);
 
+static int hs_sysfs_done = 0;
+
+
+static struct class_attribute headset_plug_status = __ATTR(status,0664,headset_status_show,NULL);
+
 /*
  * wcd_mbhc_init : initialize MBHC internal structures.
  *
@@ -2113,6 +2126,7 @@ int wcd_mbhc_init(struct wcd_mbhc *mbhc, struct snd_soc_codec *codec,
 	struct snd_soc_card *card = codec->card;
 	const char *hph_switch = "qcom,msm-mbhc-hphl-swh";
 	const char *gnd_switch = "qcom,msm-mbhc-gnd-swh";
+	struct class *headset_status_class;
 
 	pr_debug("%s: enter\n", __func__);
 
@@ -2128,6 +2142,22 @@ int wcd_mbhc_init(struct wcd_mbhc *mbhc, struct snd_soc_codec *codec,
 		dev_err(card->dev,
 			"%s: missing %s in dt node\n", __func__, gnd_switch);
 		goto err;
+	}
+
+	if(hs_sysfs_done == 0){
+
+		headset_status_class = class_create(THIS_MODULE,"headset_status");
+
+		if(IS_ERR(headset_status_class)){
+			pr_err("%s:headset_status_class:couldn't create class headset_status_class",__func__);
+		}
+
+		if(class_create_file(headset_status_class, &headset_plug_status)){
+			pr_err("%s,headset_status_class:couldn't create sub file node",__func__);
+		}
+
+		hs_sysfs_done = 1;
+
 	}
 
 	mbhc->in_swch_irq_handler = false;

@@ -188,6 +188,11 @@ enum {
 	CODEC_DELAY_1_1_MS  = 1100,
 };
 
+enum {
+	HANDSET_MIC_TYPE_ECM = 0,
+	HANDSET_MIC_TYPE_MEMS,
+};
+
 struct msm8x16_wcd_regulator {
 	const char *name;
 	int min_uv;
@@ -217,6 +222,7 @@ struct msm8916_asoc_mach_data {
 	int spk_ext_pa_gpio;
 	int mclk_freq;
 	int lb_mode;
+	int handset_mic_type;
 	u8 micbias1_cap_mode;
 	u8 micbias2_cap_mode;
 	atomic_t mclk_rsc_ref;

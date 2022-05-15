@@ -3414,6 +3414,7 @@ static int msm8x16_wcd_enable_ext_mb_source(struct snd_soc_codec *codec,
 static int msm8x16_wcd_codec_enable_micbias(struct snd_soc_dapm_widget *w,
 	struct snd_kcontrol *kcontrol, int event)
 {
+	struct msm8916_asoc_mach_data *pdata = NULL;
 	struct snd_soc_codec *codec = w->codec;
 	struct msm8x16_wcd_priv *msm8x16_wcd =
 				snd_soc_codec_get_drvdata(codec);
@@ -3424,6 +3425,8 @@ static int msm8x16_wcd_codec_enable_micbias(struct snd_soc_dapm_widget *w,
 	char *external2_text = "External2";
 	char *external_text = "External";
 	bool micbias2;
+
+	pdata = snd_soc_card_get_drvdata(codec->card);
 
 	dev_dbg(codec->dev, "%s %d\n", __func__, event);
 	switch (w->reg) {
@@ -3446,12 +3449,16 @@ static int msm8x16_wcd_codec_enable_micbias(struct snd_soc_dapm_widget *w,
 				snd_soc_update_bits(codec,
 					MSM8X16_WCD_A_ANALOG_TX_1_2_ATEST_CTL_2,
 					0x02, 0x02);
-			snd_soc_update_bits(codec, micb_int_reg, 0x80, 0x80);
+			if (pdata->handset_mic_type == HANDSET_MIC_TYPE_ECM) {
+				snd_soc_update_bits(codec, micb_int_reg, 0x80, 0x80);
+			}
 		} else if (strnstr(w->name, internal2_text, strlen(w->name))) {
 			snd_soc_update_bits(codec, micb_int_reg, 0x10, 0x10);
 			snd_soc_update_bits(codec, w->reg, 0x60, 0x00);
 		} else if (strnstr(w->name, internal3_text, strlen(w->name))) {
-			snd_soc_update_bits(codec, micb_int_reg, 0x2, 0x2);
+			if (pdata->handset_mic_type == HANDSET_MIC_TYPE_MEMS) {
+				snd_soc_update_bits(codec, micb_int_reg, 0x2, 0x2);
+			}
 		}
 		if (!strnstr(w->name, external_text, strlen(w->name)))
 			snd_soc_update_bits(codec,
@@ -3477,12 +3484,16 @@ static int msm8x16_wcd_codec_enable_micbias(struct snd_soc_dapm_widget *w,
 		break;
 	case SND_SOC_DAPM_POST_PMD:
 		if (strnstr(w->name, internal1_text, strlen(w->name))) {
-			snd_soc_update_bits(codec, micb_int_reg, 0xC0, 0x40);
+			if (pdata->handset_mic_type == HANDSET_MIC_TYPE_ECM) {
+				snd_soc_update_bits(codec, micb_int_reg, 0xC0, 0x40);
+			}
 		} else if (strnstr(w->name, internal2_text, strlen(w->name))) {
 			msm8x16_notifier_call(codec,
 					WCD_EVENT_POST_MICBIAS_2_OFF);
 		} else if (strnstr(w->name, internal3_text, 30)) {
-			snd_soc_update_bits(codec, micb_int_reg, 0x2, 0x0);
+			if (pdata->handset_mic_type == HANDSET_MIC_TYPE_MEMS) {
+				snd_soc_update_bits(codec, micb_int_reg, 0x2, 0x0);
+			}
 		} else if (strnstr(w->name, external2_text, strlen(w->name))) {
 			/*
 			 * send micbias turn off event to mbhc driver and then
@@ -3866,7 +3877,7 @@ static uint32_t wcd_get_impedance_value(uint32_t imped)
 			break;
 	}
 
-	pr_debug("%s: selected impedance value = %d\n",
+	printk("Cydio %s: selected impedance value = %d\n",
 		 __func__, wcd_imped_val[i]);
 	return wcd_imped_val[i];
 }
@@ -3880,6 +3891,7 @@ void wcd_imped_config(struct snd_soc_codec *codec,
 				snd_soc_codec_get_drvdata(codec);
 
 	value = wcd_get_impedance_value(imped);
+	printk("Cydio %s show the get impedance value:%d\n",__func__,value);
 
 	if (value < wcd_imped_val[0]) {
 		pr_debug("%s, detected impedance is less than 4 Ohm\n",
@@ -3905,14 +3917,17 @@ void wcd_imped_config(struct snd_soc_codec *codec,
 			 * than 32Ohm (such as 16Ohm load), Set 0x19E
 			 * bit 5 to 0 (POS_1P5_DB_DI)
 			 */
-			if (value >= 32)
+
+			if (value > 48) //change 32 -> 48 , just use 1P5_DB for all headset
 				snd_soc_update_bits(codec,
 					MSM8X16_WCD_A_ANALOG_RX_EAR_CTL,
 					0x20, 0x20);
-			else
+			else{
 				snd_soc_update_bits(codec,
 					MSM8X16_WCD_A_ANALOG_RX_EAR_CTL,
 					0x20, 0x00);
+				printk("Cydio %s: imped value:%d, use 1P5_DB for all headset\n",__func__,value);
+			    }
 			break;
 		case CAJON:
 		case CAJON_2_0:

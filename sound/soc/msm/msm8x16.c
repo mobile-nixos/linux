@@ -1646,7 +1646,7 @@ static void *def_msm8x16_wcd_mbhc_cal(void)
 	}
 
 #define S(X, Y) ((WCD_MBHC_CAL_PLUG_TYPE_PTR(msm8x16_wcd_cal)->X) = (Y))
-	S(v_hs_max, 1500);
+	S(v_hs_max, 1700);
 #undef S
 #define S(X, Y) ((WCD_MBHC_CAL_BTN_DET_PTR(msm8x16_wcd_cal)->X) = (Y))
 	S(num_btn, WCD_MBHC_DEF_BUTTONS);
@@ -1669,12 +1669,12 @@ static void *def_msm8x16_wcd_mbhc_cal(void)
 	 * 210-290 == Button 2
 	 * 360-680 == Button 3
 	 */
-	btn_low[0] = 75;
-	btn_high[0] = 75;
-	btn_low[1] = 150;
-	btn_high[1] = 150;
-	btn_low[2] = 237;
-	btn_high[2] = 237;
+	btn_low[0] = 85;
+	btn_high[0] = 85;
+	btn_low[1] = 120;
+	btn_high[1] = 120;
+	btn_low[2] = 225;
+	btn_high[2] = 225;
 	btn_low[3] = 450;
 	btn_high[3] = 450;
 	btn_low[4] = 500;
@@ -2751,6 +2751,25 @@ static void msm8x16_dt_parse_cap_info(struct platform_device *pdev,
 	return;
 }
 
+static void msm8x16_dt_parse_handset_mic_type(struct platform_device *pdev,
+			struct msm8916_asoc_mach_data *pdata)
+{
+	const char *prop = "qcom,msm-handset-mic-type";
+	const char *prop_value = NULL;
+	int ret;
+
+	pdata->handset_mic_type = HANDSET_MIC_TYPE_ECM;
+	ret = of_property_read_string(pdev->dev.of_node, prop, &prop_value);
+	if (ret) {
+		pr_warning("%s:handset mic default to ECM type!", __func__);
+		return;
+	}
+
+	if (!strcmp(prop_value, "MEMS")) {
+		pdata->handset_mic_type = HANDSET_MIC_TYPE_MEMS;
+	}
+}
+
 int get_cdc_gpio_lines(struct pinctrl *pinctrl, int ext_pa)
 {
 	int ret;
@@ -3264,6 +3283,7 @@ static int msm8x16_asoc_machine_probe(struct platform_device *pdev)
 
 	msm8x16_setup_hs_jack(pdev, pdata);
 	msm8x16_dt_parse_cap_info(pdev, pdata);
+	msm8x16_dt_parse_handset_mic_type(pdev, pdata);
 
 	card->dev = &pdev->dev;
 	platform_set_drvdata(pdev, card);
