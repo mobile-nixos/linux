@@ -1,0 +1,64 @@
+/* Copyright (c) 2017, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+&mdss_mdp {
+	spi_gc9305_v2_qvga_cmd: qcom,mdss_spi_gc9305_v2_qvga_cmd {
+		qcom,mdss-spi-panel-name = "gc9305_second qvga command mode spi panel";
+		qcom,mdss-spi-panel-destination = "display_1";
+		qcom,mdss-spi-panel-controller = <&mdss_spi>;
+		qcom,mdss-spi-panel-framerate = <30>;
+		qcom,mdss-spi-panel-width = <240>;
+		qcom,mdss-spi-panel-height = <320>;
+		qcom,mdss-spi-h-front-porch = <12>;
+		qcom,mdss-spi-h-back-porch = <12>;
+		qcom,mdss-spi-h-pulse-width = <4>;
+		qcom,mdss-spi-v-back-porch = <10>;
+		qcom,mdss-spi-v-front-porch = <8>;
+		qcom,mdss-spi-v-pulse-width = <2>;
+		qcom,mdss-spi-h-left-border = <0>;
+		qcom,mdss-spi-h-right-border = <0>;
+		qcom,mdss-spi-v-top-border = <0>;
+		qcom,mdss-spi-v-bottom-border = <0>;
+		qcom,mdss-spi-bpp = <16>;
+		qcom,mdss-spi-on-command = [00 02 36 00  
+			00 02 3A 55    //65K 16bit
+			00 02 35 00  //TE v-blanking
+			00 06 B2 0C 0C 00 33 33  //porch setting
+			00 02 B7 75  //gate control  VGH VGL
+			00 02 BB 34  //Vcoms setting 1.4v
+			00 02 C0 2C  //LCM control 
+			00 02 C2 01  //VDV VRH COMMAND ENABLE
+			00 02 C3 0D  //VRH SET
+			00 02 C4 20  //VDV SET
+			00 02 C6 EF  //frame rate 
+			00 03 44 00 00  //SET TEARING SCAN LINE
+			00 03 D0 A4 A1  //power control 1
+			00 0F E0 D0 02 09 0D 0E 19 30 51 43 09 14 13 18 21  //positive voltage gamma control
+			00 0F E1 D0 02 09 0D 0D 18 32 46 42 09 13 13 17 21  //negative voltage gamma control
+			00 05 2A 00 00 00 EF  //column address set
+			00 05 2B 00 00 01 3F  //row address set
+			78 01 11  //sleep out
+			00 01 29  //display on
+			00 01 2C];  //memory write transfer data from mcu to frame memory
+		qcom,mdss-spi-off-command = [00 01 28
+				78 01 10];
+		qcom,mdss-brightness-max-level = <255>;
+		qcom,mdss-spi-bl-min-level = <1>;
+		qcom,mdss-spi-bl-max-level = <255>;
+		qcom,mdss-spi-reset-sequence = <1 10>, <0 2>, <1 10>;
+		qcom,esd-check-enabled;
+		qcom,mdss-spi-panel-status-check-mode = "reg_read";
+		qcom,mdss-spi-panel-status-reg = /bits/ 8 <0x0A>;
+		qcom,mdss-spi-panel-status-read-length = <2>;
+    	qcom,mdss-spi-panel-status-value = /bits/ 8 <0x9C 0x00>;
+	};
+};

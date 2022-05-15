@@ -1,0 +1,50 @@
+/*
+ * Copyright (c) 2017, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+&mem_client_1_size {
+	qcom,peripheral-size = <2097152>;
+};
+
+&external_image_mem {
+	reg = <0x0 0x87900000 0x0 0x700000>;
+};
+
+&modem_adsp_mem {
+	reg = <0x0 0x88000000 0x0 0x5000000>;
+};
+
+&peripheral_mem {
+	reg = <0x0 0x8D000000 0x0 0x0500000>;
+};
+
+&memory {
+	secure_display_memory: secure_region {
+		linux,reserve-contiguous-region;
+		reg = <0 0 0 0x400000>;
+		label = "secure_display_mem";
+	};
+};
+
+&ion {
+	secure_display_heap: qcom,ion-heap@10 { /* SECURE DISPLAY HEAP */
+		compatible = "qcom,msm-ion-reserve";
+		reg = <10>;
+		qcom,heap-align = <0x1000>;
+		linux,contiguous-region = <&secure_display_memory>;
+		qcom,ion-heap-type = "SECURE_DMA";
+	};
+};
+
+&qcom_seecom {
+	reg = <0x87900000 0x300000>;
+};

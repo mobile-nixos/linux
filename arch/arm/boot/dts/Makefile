@@ -212,8 +212,14 @@ dtb-$(CONFIG_ARCH_ZYNQ) += zynq-zc702.dtb
 targets += dtbs
 targets += $(DTB_LIST)
 
-#used for cleaning - not building
+ifneq (,$(filter $(TARGET_PRODUCT),argon)))
+subdir- := argon
+else
 subdir- := qcom
+endif
+
+#used for cleaning - not building
+#subdir- := qcom
 endif
 
 # *.dtb used to be generated in the directory above. Clean out the

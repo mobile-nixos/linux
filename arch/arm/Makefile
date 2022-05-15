@@ -280,7 +280,12 @@ ifeq ($(CONFIG_USE_OF),y)
 KBUILD_DTBS := dtbs
 endif
 
+#DTSSUBDIR := qcom
+ifneq (,$(filter $(TARGET_PRODUCT),argon))
+DTSSUBDIR := argon                                                           
+else
 DTSSUBDIR := qcom
+endif
 
 all:	$(KBUILD_IMAGE) $(KBUILD_DTBS)
 
