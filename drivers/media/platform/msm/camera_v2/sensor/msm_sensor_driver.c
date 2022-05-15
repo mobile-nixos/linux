@@ -17,6 +17,7 @@
 #include "camera.h"
 #include "msm_cci.h"
 #include "msm_camera_dt_util.h"
+#include "camera_tct_func.h"
 
 /* Logging macro */
 #undef CDBG
@@ -904,6 +905,11 @@ int32_t msm_sensor_driver_probe(void *setting,
 	}
 
 	pr_err("%s probe succeeded", slave_info->sensor_name);
+        /*
+         * Set probe succeeded flag to 1 so that no other camera shall
+         * probed on this slot
+         */
+        s_ctrl->is_probe_succeed = 1;
 
 	/*
 	 * Update the subdevice id of flash-src based on availability in kernel.
@@ -957,11 +963,11 @@ int32_t msm_sensor_driver_probe(void *setting,
 
 	msm_sensor_fill_sensor_info(s_ctrl, probed_info, entity_name);
 
-	/*
-	 * Set probe succeeded flag to 1 so that no other camera shall
-	 * probed on this slot
-	 */
-	s_ctrl->is_probe_succeed = 1;
+	//Begin add by (TCTSZ) jin.xia@tcl.com for camera engineer mode, 2015-11-24
+	if(s_ctrl->is_probe_succeed)
+		sensor_sysfs_init(slave_info->sensor_name,(int)(s_ctrl->sensordata->sensor_info->position));
+	//End add
+
 	return rc;
 
 camera_power_down:

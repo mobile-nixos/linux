@@ -209,6 +209,16 @@ config GC0310
 		Preview and snapshot resolution shall be 640*480 at 30 fps,
 		It does not support auto focus.
 
+config GC2375
+	bool "Sensor GC2375 (BAYER yM)"
+	depends on MSMB_CAMERA
+	default y
+	---help---
+		Galaxycore 2 MP Bayer Sensor, only use 1 mipi lane,
+		preview set to 1600*1200 at 30 fps,
+		snapshot set to 1600*1200 at 30 fps,
+		This sensor driver does not support auto focus.
+
 config OV8825
 	bool "OmniVision OV8825 (BAYER 8MP)"
 	depends on MSMB_CAMERA

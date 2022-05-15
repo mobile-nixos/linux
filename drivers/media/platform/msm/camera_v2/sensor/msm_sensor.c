@@ -17,11 +17,22 @@
 #include "msm_camera_i2c_mux.h"
 #include <linux/regulator/rpm-smd-regulator.h>
 #include <linux/regulator/consumer.h>
+#include "camera_tct_func.h"
 
+//// add for gc2375 OTP
+#define GC2375_USE_OTP
+
+//#ifdef GC2375_USE_OTP
+//void gc2375_gcore_identify_otp(struct msm_sensor_ctrl_t *s_ctrl);
+//#endif
+////end OTP
+
+/*#define CONFIG_MSMB_CAMERA_DEBUG*/
 #undef CDBG
 #define CDBG(fmt, args...) pr_debug(fmt, ##args)
 
-static struct v4l2_file_operations msm_sensor_v4l2_subdev_fops;
+
+//static struct v4l2_file_operations msm_sensor_v4l2_subdev_fops;
 static void msm_sensor_adjust_mclk(struct msm_camera_power_ctrl_t *ctrl)
 {
 	int idx;
@@ -303,6 +314,12 @@ static int32_t msm_sensor_get_dt_data(struct device_node *of_node,
 		sensordata->slave_info->sensor_id_reg_addr,
 		sensordata->slave_info->sensor_id);
 
+        pr_err("JWJ Read Dt: %s:%d slave addr 0x%x sensor reg 0x%x id 0x%x\n",
+                __func__, __LINE__,
+                sensordata->slave_info->sensor_slave_addr,
+                sensordata->slave_info->sensor_id_reg_addr,
+                sensordata->slave_info->sensor_id);
+
 	/*Optional property, don't return error if absent */
 	ret = of_property_read_string(of_node, "qcom,vdd-cx-name",
 		&sensordata->misc_regulator);
@@ -501,7 +518,10 @@ int msm_sensor_match_id(struct msm_sensor_ctrl_t *s_ctrl)
 	sensor_i2c_client = s_ctrl->sensor_i2c_client;
 	slave_info = s_ctrl->sensordata->slave_info;
 	sensor_name = s_ctrl->sensordata->sensor_name;
-
+        pr_err("%s:%d JWJ: %p %p %p\n",
+                        __func__, __LINE__, sensor_i2c_client, slave_info,
+                        sensor_name);
+        pr_err("%s: JWJ sensor name: %s \n", __func__, sensor_name);
 	if (!sensor_i2c_client || !slave_info || !sensor_name) {
 		pr_err("%s:%d failed: %p %p %p\n",
 			__func__, __LINE__, sensor_i2c_client, slave_info,
@@ -513,12 +533,16 @@ int msm_sensor_match_id(struct msm_sensor_ctrl_t *s_ctrl)
 		sensor_i2c_client, slave_info->sensor_id_reg_addr,
 		&chipid, MSM_CAMERA_I2C_WORD_DATA);
 	if (rc < 0) {
-		pr_err("%s: %s: read id failed\n", __func__, sensor_name);
+		pr_err("%s: %s: JWJ read id failed\n", __func__, sensor_name);
 		return rc;
 	}
 
-	CDBG("%s: read id: 0x%x expected id 0x%x:\n", __func__, chipid,
-		slave_info->sensor_id);
+	
+	//mod by weicai.long@tcl.com, debug log.
+	pr_err("%s, read id=0x%x, expected id=0x%x\n",__func__, chipid, slave_info->sensor_id);
+	//Begin add by (TCTSZ) jin.xia@tcl.com for camera engineer mode, 2015-11-24
+	cur_sensor_update(s_ctrl);
+	//End add
 	if (chipid != slave_info->sensor_id) {
 		pr_err("msm_sensor_match_id chip id doesnot match\n");
 		return -ENODEV;
@@ -995,6 +1019,9 @@ int msm_sensor_config(struct msm_sensor_ctrl_t *s_ctrl, void __user *argp)
 			cdata->cfg.sensor_init_params.position,
 			cdata->cfg.sensor_init_params.sensor_mount_angle);
 		break;
+    case CFG_SET_SLAVE_INFO:
+	    pr_err("JWJ: CFG_SET_SLAVE_INFO, empty now");
+		break;
 	case CFG_WRITE_I2C_ARRAY: {
 		struct msm_camera_i2c_reg_setting conf_array;
 		struct msm_camera_i2c_reg_array *reg_setting = NULL;
@@ -1112,12 +1139,11 @@ int msm_sensor_config(struct msm_sensor_ctrl_t *s_ctrl, void __user *argp)
 			write_config.conf_array.size);
 
 		if (!write_config.conf_array.size ||
-			write_config.conf_array.size > I2C_SEQ_REG_DATA_MAX) {
+			write_config.conf_array.size > I2C_REG_DATA_MAX) {
 			pr_err("%s:%d failed\n", __func__, __LINE__);
 			rc = -EFAULT;
 			break;
 		}
-
 		reg_setting = kzalloc(write_config.conf_array.size *
 			(sizeof(struct msm_camera_i2c_reg_array)), GFP_KERNEL);
 		if (!reg_setting) {
@@ -1197,7 +1223,6 @@ int msm_sensor_config(struct msm_sensor_ctrl_t *s_ctrl, void __user *argp)
 			rc = -EFAULT;
 			break;
 		}
-
 		reg_setting = kzalloc(conf_array.size *
 			(sizeof(struct msm_camera_i2c_seq_reg_array)),
 			GFP_KERNEL);
@@ -1225,7 +1250,7 @@ int msm_sensor_config(struct msm_sensor_ctrl_t *s_ctrl, void __user *argp)
 
 	case CFG_POWER_UP:
 		if (s_ctrl->sensor_state != MSM_SENSOR_POWER_DOWN) {
-			pr_err("%s:%d failed: invalid state %d\n", __func__,
+			pr_err("JWJ %s:%d failed: invalid state %d\n", __func__,
 				__LINE__, s_ctrl->sensor_state);
 			rc = -EFAULT;
 			break;
@@ -1236,12 +1261,12 @@ int msm_sensor_config(struct msm_sensor_ctrl_t *s_ctrl, void __user *argp)
 
 			rc = s_ctrl->func_tbl->sensor_power_up(s_ctrl);
 			if (rc < 0) {
-				pr_err("%s:%d failed rc %d\n", __func__,
+				pr_err("JWJ %s:%d failed rc %d\n", __func__,
 					__LINE__, rc);
 				break;
 			}
 			s_ctrl->sensor_state = MSM_SENSOR_POWER_UP;
-			pr_err("%s:%d sensor state %d\n", __func__, __LINE__,
+			pr_err("JWJ %s:%d sensor state %d\n", __func__, __LINE__,
 				s_ctrl->sensor_state);
 		} else {
 			rc = -EFAULT;
@@ -1496,14 +1521,6 @@ int32_t msm_sensor_platform_probe(struct platform_device *pdev,
 	s_ctrl->sensordata->sensor_info->session_id = session_id;
 	s_ctrl->msm_sd.close_seq = MSM_SD_CLOSE_2ND_CATEGORY | 0x3;
 	msm_sd_register(&s_ctrl->msm_sd);
-	msm_sensor_v4l2_subdev_fops = v4l2_subdev_fops;
-#ifdef CONFIG_COMPAT
-	msm_sensor_v4l2_subdev_fops.compat_ioctl32 =
-		msm_sensor_subdev_fops_ioctl;
-#endif
-	s_ctrl->msm_sd.sd.devnode->fops =
-		&msm_sensor_v4l2_subdev_fops;
-
 	CDBG("%s:%d\n", __func__, __LINE__);
 
 	s_ctrl->func_tbl->sensor_power_down(s_ctrl);
@@ -1602,7 +1619,11 @@ int msm_sensor_i2c_probe(struct i2c_client *client,
 		return rc;
 	}
 
-	CDBG("%s %s probe succeeded\n", __func__, client->name);
+	pr_err("%s %s probe succeeded\n", __func__, client->name); // Enable log by zhaohong.chen@tcl.com 
+	//Begin add by zhaohong.chen for sensor node info
+	sensor_sysfs_init(client->name,(int)(s_ctrl->sensordata->sensor_info->position));
+	//End add
+
 	snprintf(s_ctrl->msm_sd.sd.name,
 		sizeof(s_ctrl->msm_sd.sd.name), "%s", id->name);
 	v4l2_i2c_subdev_init(&s_ctrl->msm_sd.sd, client,
