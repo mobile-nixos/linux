@@ -73,6 +73,8 @@ struct led_gpio_flash_data {
 	struct pinctrl *pinctrl;
 	struct pinctrl_state *gpio_state_default;
 	struct msm_flash_ctrl_seq ctrl_seq[2];
+	
+	struct device *dev;
 };
 
 static struct of_device_id led_gpio_flash_of_match[] = {
@@ -95,19 +97,101 @@ static void led_gpio_brightness_set(struct led_classdev *led_cdev,
 			flash_led->ctrl_seq[FLASH_EN].flash_on_val;
 		flash_now =
 			flash_led->ctrl_seq[FLASH_NOW].flash_on_val;
+		
+
 	} else if (brightness > LED_OFF) {
 		flash_en =
 			flash_led->ctrl_seq[FLASH_EN].torch_on_val;
 		flash_now =
 			flash_led->ctrl_seq[FLASH_NOW].torch_on_val;
+
+
 	} else {
 		flash_en = 0;
 		flash_now = 0;
 	}
 
+
+		if (brightness > LED_HALF) {
+
+
+	if (flash_led->duty_cycle[FLASH_NOW]) {
+		struct clk *flash_now_duty_cycle_clk = NULL;
+
+		flash_now_duty_cycle_clk = devm_clk_get(flash_led ->dev,
+			"flash_now_duty_cycle_clk");
+		if (!IS_ERR(flash_now_duty_cycle_clk)) {
+			rc = clk_set_duty_cycle(flash_now_duty_cycle_clk,
+					flash_led->duty_cycle[FLASH_NOW],
+					DUTY_CYCLE_BASE);
+			clk_put(flash_now_duty_cycle_clk);
+		} else {
+			rc = clk_set_duty_cycle(flash_led->flash_now_clk,
+					flash_led->duty_cycle[FLASH_NOW],
+					DUTY_CYCLE_BASE);
+		}
+
+		if (rc) {
+			pr_err("Failed to set duty cycle for flash now.\n");
+			return ;
+		}
+	} 
+
+
+		
+			if (flash_now == GPIO_OUT_HIGH &&
+			!atomic_read(&flash_led->clk_enabled[FLASH_NOW])) {
+			rc = clk_prepare_enable(flash_led->flash_now_clk);
+			atomic_set(&flash_led->clk_enabled[FLASH_NOW], 1);
+		}
+		
+
+	} else if (brightness > LED_OFF) {
+		if (flash_led->duty_cycle[FLASH_EN]) {
+				struct clk *flash_en_duty_cycle_clk = NULL;
+
+				flash_en_duty_cycle_clk = devm_clk_get(flash_led ->dev,
+					"flash_now_duty_cycle_clk");
+				if (!IS_ERR(flash_en_duty_cycle_clk)) {
+					rc = clk_set_duty_cycle(flash_en_duty_cycle_clk,
+							flash_led->duty_cycle[FLASH_EN],
+							DUTY_CYCLE_BASE);
+					clk_put(flash_en_duty_cycle_clk);
+				} else {
+					rc = clk_set_duty_cycle(flash_led->flash_en_clk,
+							flash_led->duty_cycle[FLASH_EN],
+							DUTY_CYCLE_BASE);
+				}
+
+				if (rc) {
+					pr_err("Failed to set duty cycle for flash en.\n");
+					return ;
+				}
+		}
+		
+
+		if (flash_en == GPIO_OUT_HIGH &&
+			!atomic_read(&flash_led->clk_enabled[FLASH_EN])) {
+			rc = clk_prepare_enable(flash_led->flash_en_clk);
+			atomic_set(&flash_led->clk_enabled[FLASH_EN], 1);
+		} }
+	else {
+		if (flash_en == GPIO_OUT_LOW &&
+			atomic_read(&flash_led->clk_enabled[FLASH_EN])) {
+			clk_disable_unprepare(flash_led->flash_en_clk);
+			atomic_set(&flash_led->clk_enabled[FLASH_EN], 0);
+		}
+		if (flash_now == GPIO_OUT_LOW &&
+			atomic_read(&flash_led->clk_enabled[FLASH_NOW]))  {
+			clk_disable_unprepare(flash_led->flash_now_clk);
+			atomic_set(&flash_led->clk_enabled[FLASH_NOW], 0);
+		}
+}
+
+
 	CDBG("%s:flash_en=%d, flash_now=%d\n", __func__, flash_en, flash_now);
 
-	if (flash_led->gpio_type[FLASH_EN] == NORMAL_GPIO) {
+/*	if (flash_led->gpio_type[FLASH_EN] == NORMAL_GPIO) {
 		rc = gpio_direction_output(flash_led->flash_en, flash_en);
 	} else {
 		if (flash_en == GPIO_OUT_HIGH &&
@@ -138,7 +222,10 @@ static void led_gpio_brightness_set(struct led_classdev *led_cdev,
 			clk_disable_unprepare(flash_led->flash_now_clk);
 			atomic_set(&flash_led->clk_enabled[FLASH_NOW], 0);
 		}
-	}
+	}   */
+
+
+	
 
 	if (rc) {
 		pr_err("%s: Failed to set flash now.\n", __func__);
@@ -212,7 +299,7 @@ static int led_gpio_get_dt_data(struct device *dev,
 		}
 	} else {
 		flash_led->flash_en_clk =
-			devm_clk_get(dev, "flash_en_clk");
+			devm_clk_get(dev, "flash_now_clk");
 		if (IS_ERR(flash_led->flash_en_clk)) {
 			pr_err("Failed to get flash-en clk.\n");
 			return -EINVAL;
@@ -288,7 +375,7 @@ static int led_gpio_get_dt_data(struct device *dev,
 		struct clk *flash_en_duty_cycle_clk = NULL;
 
 		flash_en_duty_cycle_clk = devm_clk_get(dev,
-			"flash_en_duty_cycle_clk");
+			"flash_now_duty_cycle_clk");
 		if (!IS_ERR(flash_en_duty_cycle_clk)) {
 			rc = clk_set_duty_cycle(flash_en_duty_cycle_clk,
 					flash_led->duty_cycle[FLASH_EN],
@@ -326,7 +413,7 @@ static int led_gpio_get_dt_data(struct device *dev,
 			pr_err("Failed to set duty cycle for flash now.\n");
 			return rc;
 		}
-	}
+	} 
 
 	rc = of_property_read_u32_array(node, "qcom,flash-seq-val",
 			array_flash_seq, 2);
@@ -432,6 +519,7 @@ static int led_gpio_flash_probe(struct platform_device *pdev)
 	}
 
 	rc = led_gpio_get_dt_data(&pdev->dev, flash_led);
+	flash_led ->dev = &pdev->dev;
 	if (rc) {
 		pr_err("%s: get device tree data failed.\n",
 				__func__);
