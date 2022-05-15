@@ -818,4 +818,5 @@ static int __init vfp_init(void)
 	return 0;
 }
 
-core_initcall(vfp_init);
+/*2017-7-14 shudan.liu modify for kernel module init sequence */
+module_init(vfp_init);
