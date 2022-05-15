@@ -218,6 +218,7 @@
 #define GPIO_MAX_LEVEL			LED_FULL
 #define LED_GPIO_MODE_CTRL(base)	(base + 0x40)
 #define LED_GPIO_VIN_CTRL(base)		(base + 0x41)
+#define LED_GPIO_DIG_PULL_CTRL(base)    (base + 0x42) //add for button-backlight GPIO conf
 #define LED_GPIO_EN_CTRL(base)		(base + 0x46)
 
 #define LED_GPIO_VIN_CTRL_DEFAULT	0
@@ -228,10 +229,13 @@
 #define LED_GPIO_EN_MASK		0x80
 #define LED_GPIO_SRC_MASK		0x0F
 #define LED_GPIO_MODE_CTRL_MASK		0x30
+#define LED_GPIO_DIG_PULL_CTRL_MASK  0x07//add for button-backlight GPIO conf
 
 #define LED_GPIO_MODE_ENABLE	0x01
 #define LED_GPIO_MODE_DISABLE	0x00
 #define LED_GPIO_MODE_OUTPUT		0x10
+#define LED_GPIO_MODE_INPUT  0x00   //add for button-backlight GPIO conf
+#define LED_GPIO_DIG_PULLDOWN_10UA 0x04 //add for button-backlight GPIO conf
 #define LED_GPIO_EN_ENABLE		0x80
 #define LED_GPIO_EN_DISABLE		0x00
 
@@ -1074,10 +1078,20 @@ static int qpnp_gpio_set(struct qpnp_led_data *led)
 
 		led->gpio_cfg->enable = true;
 	} else {
+		/*rc = qpnp_led_masked_write(led,
+				LED_GPIO_MODE_CTRL(led->base),
+				LED_GPIO_MODE_MASK,
+				LED_GPIO_MODE_DISABLE);*/
+		//add for button-backlight GPIO conf,begin.
 		rc = qpnp_led_masked_write(led,
 				LED_GPIO_MODE_CTRL(led->base),
 				LED_GPIO_MODE_MASK,
-				LED_GPIO_MODE_DISABLE);
+				LED_GPIO_MODE_INPUT);
+		rc = qpnp_led_masked_write(led,
+				LED_GPIO_DIG_PULL_CTRL(led->base),
+				LED_GPIO_DIG_PULL_CTRL_MASK,
+				LED_GPIO_DIG_PULLDOWN_10UA);
+		//add for button-backlight GPIO conf,end.
 		if (rc) {
 			dev_err(&led->spmi_dev->dev,
 					"Failed to write led mode reg\n");
@@ -1087,7 +1101,7 @@ static int qpnp_gpio_set(struct qpnp_led_data *led)
 		rc = qpnp_led_masked_write(led,
 				LED_GPIO_EN_CTRL(led->base),
 				LED_GPIO_EN_MASK,
-				LED_GPIO_EN_DISABLE);
+				LED_GPIO_EN_ENABLE);
 		if (rc) {
 			dev_err(&led->spmi_dev->dev,
 					"Failed to write led enable reg\n");
