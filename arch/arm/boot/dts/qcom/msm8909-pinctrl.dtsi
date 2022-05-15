@@ -82,8 +82,8 @@
 
 		cam_sensor_rear {
 			/* RESET, STANDBY */
-			qcom,pins =  <&gp 35>, <&gp 34>;
-			qcom,num-grp-pins = <2>;
+			qcom,pins =  <&gp 35>, <&gp 34>, <&gp 58>;
+			qcom,num-grp-pins = <3>;
 			qcom,pin-func = <0>;
 			label = "cam-sensor-rear";
 			/* active state */
@@ -95,8 +95,8 @@
 
 		cam_sensor_rear_sleep {
 			/* RESET, STANDBY */
-			qcom,pins =  <&gp 35>, <&gp 34>;
-			qcom,num-grp-pins = <2>;
+			qcom,pins =  <&gp 35>, <&gp 34>, <&gp 58>;
+			qcom,num-grp-pins = <3>;
 			qcom,pin-func = <0>;
 			label = "cam-sensor-rear-sleep";
 			/*suspended state */
@@ -250,7 +250,7 @@
 				bias-disable;
 			};
 		};
-
+/*
 		cdc-ext-mclk-lines {
 			qcom,pins = <&gp 98>;
 			qcom,num-grp-pins = <1>;
@@ -262,6 +262,22 @@
 			cdc_ext_mclk_sus: ext_mclk_off {
 				drive-strength = <2>;
 				bias-disable;
+			};
+		};
+*/
+/* shudan.liu@fih-foxconn.com modify gpio for end key use */
+		cdc-ext-mclk-lines {
+			qcom,pins = <&gp 98>;
+			qcom,num-grp-pins = <1>;
+			qcom,pin-func = <0>;
+			label = "cdc-ext-mclk-lines";
+			cdc_ext_mclk_act: ext_mclk_on {
+				drive-strength = <2>;
+				bias-pull-up;
+			};
+			cdc_ext_mclk_sus: ext_mclk_off {
+				drive-strength = <2>;
+				bias-pull-up;
 			};
 		};
 
@@ -1071,8 +1087,9 @@
 			qcom,pin-func = <1>;
 			label = "spi5-cs0-active";
 			spi5_cs0_active: cs0_active {
-				drive-strength = <2>;
-				bias-disable = <0>;
+				drive-strength = <12>;
+				bias-pull-up; /* pull up */
+				output-high;
 			};
 		};
 
@@ -1084,7 +1101,8 @@
 			label = "spi5-cs0-suspend";
 			spi5_cs0_sleep: cs0_sleep {
 				drive-strength = <2>;
-				bias-disable = <0>;
+				bias-pull-up; /* pull up */
+				output-high;
 			};
 		};
 

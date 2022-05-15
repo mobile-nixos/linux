@@ -18,37 +18,32 @@
 		qcom,mdss-spi-panel-framerate = <30>;
 		qcom,mdss-spi-panel-width = <240>;
 		qcom,mdss-spi-panel-height = <320>;
-		qcom,mdss-spi-h-front-porch = <79>;
-		qcom,mdss-spi-h-back-porch = <59>;
-		qcom,mdss-spi-h-pulse-width = <60>;
+		qcom,mdss-spi-h-front-porch = <12>;
+		qcom,mdss-spi-h-back-porch = <12>;
+		qcom,mdss-spi-h-pulse-width = <4>;
 		qcom,mdss-spi-v-back-porch = <10>;
-		qcom,mdss-spi-v-front-porch = <7>;
+		qcom,mdss-spi-v-front-porch = <8>;
 		qcom,mdss-spi-v-pulse-width = <2>;
 		qcom,mdss-spi-h-left-border = <0>;
 		qcom,mdss-spi-h-right-border = <0>;
 		qcom,mdss-spi-v-top-border = <0>;
 		qcom,mdss-spi-v-bottom-border = <0>;
 		qcom,mdss-spi-bpp = <16>;
-		qcom,mdss-spi-on-command = [00 01 FE
-			00 01 EF
-			00 02 36 48
+		qcom,mdss-spi-on-command = [00 02 36 00
 			00 02 3A 05
 			00 02 35 00
-			00 03 44 00 14
-			00 03 A4 44 44
-			00 03 A5 42 42
-			00 03 AA 88 88
-			00 03 E8 12 40
-			00 03 E3 01 10
-			00 02 FF 61
-			00 02 AC 00
-			00 03 A6 2A 2A
-			00 03 A7 2B 2B
-			00 03 A8 18 18
-			00 03 A9 2A 2A
-			00 02 AD 33
-			00 02 AF 55
-			00 02 AE 2B
+			00 06 B2 0C 0C 00 33 33
+			00 02 B7 35
+			00 02 BB 35
+			00 02 C0 2C
+			00 02 C2 01
+			00 02 C3 11
+			00 02 C4 20
+			00 02 C6 12
+			00 03 44 00 00
+			00 03 D0 A4 A1
+			00 0F E0 D0 00 06 0D 0F 2A 39 44 49 0B 16 15 1A 1D
+			00 0F E1 D0 00 06 0D 0F 2A 37 44 49 0B 17 15 1B 1E
 			00 05 2A 00 00 00 EF
 			00 05 2B 00 00 01 3F
 			00 01 2C
@@ -61,11 +56,11 @@
 			78 01 11
 			00 01 29
 			00 01 2C];
-		qcom,mdss-spi-off-command = [20 01 28
-				 20 01 10];
+		qcom,mdss-spi-off-command = [00 01 28
+				78 01 10];
+		qcom,mdss-brightness-max-level = <255>;
 		qcom,mdss-spi-bl-min-level = <1>;
-		qcom,mdss-spi-bl-max-level = <4095>;
-		qcom,mdss-spi-bl-pmic-control-type = "bl_ctrl_wled";
-		qcom,mdss-spi-reset-sequence = <1 20>, <0 1>, <1 20>;
+		qcom,mdss-spi-bl-max-level = <255>;
+		qcom,mdss-spi-reset-sequence = <1 10>, <0 2>, <1 10>;
 	};
 };

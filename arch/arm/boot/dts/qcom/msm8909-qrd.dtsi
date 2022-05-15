@@ -44,7 +44,7 @@
 &qcom_tzlog {
 	status = "okay";
 };
-
+/*
 &soc {
 	gpio_keys {
 		compatible = "gpio-keys";
@@ -63,6 +63,7 @@
 		};
 	};
 };
+*/
 
 &sdhc_1 {
 	vdd-supply = <&pm8909_l8>;

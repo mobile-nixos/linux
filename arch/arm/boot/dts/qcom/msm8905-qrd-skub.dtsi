@@ -16,86 +16,115 @@
 
 &soc {
 	matrix_keypad: matrix_keypad@0 {
-		       compatible = "gpio-matrix-keypad";
-		       input-name = "matrix_keypad";
-		       debounce-delay-ms = <5>;
-		       col-scan-delay-us = <2>;
-		       pinctrl-names = "tlmm_gpio_key_active","tlmm_gpio_key_suspend";
-		       pinctrl-0 = <&gpio_key_active>;
-		       pinctrl-1 = <&gpio_key_suspend>;
+		compatible = "gpio-matrix-keypad";
+		input-name = "matrix_keypad";
+		debounce-delay-ms = <10>;
+		col-scan-delay-us = <7>;
+		pinctrl-names = "tlmm_gpio_key_active","tlmm_gpio_key_suspend";
+		pinctrl-0 = <&gpio_key_active>;
+		pinctrl-1 = <&gpio_key_suspend>;
 
-		       row-gpios = <&msm_gpio 97 0
-			       &msm_gpio 96 0
-			       &msm_gpio 95 0
-			       &msm_gpio 94 0>;
+		row-gpios = <&msm_gpio 97 0
+			&msm_gpio 96 0
+			&msm_gpio 95 0
+			&msm_gpio 94 0>;
 
-		       col-gpios = <&msm_gpio 52 0
-			       &msm_gpio 56 0
-			       &msm_gpio 7 0
-			       &msm_gpio 99 0
-			       &msm_gpio 6 0>;
-		       linux,keymap = <0x000000e7      /* (0,0) KEY_DIAL */
-			       0x00010004      /* (1,0) KEY_3 */
-			       0x00020007      /* (2,0) KEY_6 */
-			       0x0003000A      /* (3,0) KEY_9 */
-			       0x0004020b      /* (4,0) KEY_NUMERIC_POUND */
+		col-gpios = <&msm_gpio 52 0
+			&msm_gpio 56 0
+			&msm_gpio 7 0
+			&msm_gpio 99 0
+			&msm_gpio 6 0>;
+		linux,keymap = <0x000000e7      /* (0,0) KEY_DIAL */
+       		0x00010002      /* (1,0) KEY_1 */
+       		0x00020005      /* (2,0) KEY_4 */
+       		0x00030008      /* (3,0) KEY_7 */
+       		0x0004020a      /* (4,0) KEY_NUMERIC_STAR */
 
-			       0x01000069      /* (0,1) KEY_LEFT */
-			       0x01010003      /* (1,1) KEY_2 */
-			       0x01020006      /* (2,1) KEY_5 */
-			       0x01030009      /* (3,1) KEY_8 */
-			       0x0104000b      /* (4,1) KEY_0 */
+			0x01000069      /* (0,1) KEY_LEFT */
+			0x01010003      /* (1,1) KEY_2 */
+			0x01020006      /* (2,1) KEY_5 */
+			0x01030009      /* (3,1) KEY_8 */
+			0x0104000b      /* (4,1) KEY_0 */
 
-			       0x0200008b      /* (0,2) KEY_MENU */
-			       0x02010002      /* (1,2) KEY_1 */
-			       0x02020005      /* (2,2) KEY_4 */
-			       0x02030008      /* (3,2) KEY_7 */
-			       0x0204020a      /* (4,2) KEY_NUMERIC_STAR */
+			0x0200008b      /* (0,2) KEY_MENU */
+       		0x02010004      /* (1,2) KEY_3 */
+       		0x02020007      /* (2,2) KEY_6 */
+       		0x0203000A      /* (3,2) KEY_9 */
+       		0x0204020b      /* (4,2) KEY_NUMERIC_POUND */
 
-			       0x03000160      /* (0,3) KEY_OK */
-			       0x0301006A      /* (1,3) KEY_RIGHT */
-			       0x0302009e>;      /* (3,3) KEY_BACK */
+			0x03000160      /* (0,3) KEY_OK */
+			0x0301006A      /* (1,3) KEY_RIGHT */
+			0x0302009e>;      /* (3,3) KEY_BACK */
+	};
 
-	       };
+	gpio_keys {
+		compatible = "gpio-keys";
+		input-name = "gpio-keys";
+		pinctrl-names = "tlmm_gpio_key_active","tlmm_gpio_key_suspend";
+		pinctrl-0 = <&gpio_key_active>;
+		pinctrl-1 = <&gpio_key_suspend>;
 
+		vol_up {
+			label = "volume_up";
+			gpios = <&msm_gpio 90 0x1>;
+			linux,input-type = <1>;
+			linux,code = <103>;
+			gpio-key,wakeup;
+			debounce-interval = <15>;
+		};
 
-		       gpio_keys {
-			       compatible = "gpio-keys";
-			       input-name = "gpio-keys";
-			       pinctrl-names = "tlmm_gpio_key_active","tlmm_gpio_key_suspend";
-			       pinctrl-0 = <&gpio_key_active>;
-			       pinctrl-1 = <&gpio_key_suspend>;
-
-			       vol_up {
-				       label = "volume_up";
-				       gpios = <&msm_gpio 90 0x1>;
-				       linux,input-type = <1>;
-				       linux,code = <103>;
-				       gpio-key,wakeup;
-				       debounce-interval = <15>;
-			       };
-		       };
-
+		end_key {
+			label = "end_key";
+			gpios = <&msm_gpio 98 0x1>;
+			linux,input-type = <1>;
+			linux,code = <116>;
+			gpio-key,wakeup;
+			debounce-interval = <15>;
+		};
+	};
 
 };
 
 &tlmm_pinmux {
 	tlmm_gpio_key {
-		qcom,pins = <&gp 52>, <&gp 56>, <&gp 7>, <&gp 99>, <&gp 6>;
+		qcom,pins = <&gp 52>, <&gp 56>, <&gp 7>, <&gp 99>, <&gp 6>, <&gp 98>;
 		qcom,pin-func = <0>;
-		qcom,num-grp-pins = <5>;
+		qcom,num-grp-pins = <6>;
 		label = "tlmm_gpio_key";
-	gpio_key_active: gpio_key_active {
-			 drive-strength = <2>;
-			 bias-pull-up;
-		 };
-	gpio_key_suspend: gpio_key_suspend {
-			  drive-strength = <2>;
-			  bias-pull-up;
-		  };
+		gpio_key_active: gpio_key_active {
+			drive-strength = <2>;
+			bias-pull-up;
+		};
+		gpio_key_suspend: gpio_key_suspend {
+			drive-strength = <2>;
+			bias-pull-up;
+		};
+	};
+
+	hall_sensor0_int_pin {
+		qcom,pins = <&gp 92>;
+		qcom,pin-func = <0>;
+		qcom,num-grp-pins = <1>;
+		label = "hall_sensor0-irq";
+		hall_sensor0_int_default: hall_sensor0_int_default {
+			drive-strength = <6>;
+			bias-pull-up;
+		};
+	};
+
+	hall_sensor1_int_pin {
+		qcom,pins = <&gp 36>;
+		qcom,pin-func = <0>;
+		qcom,num-grp-pins = <1>;
+		label = "hall_sensor1-irq";
+		hall_sensor1_int_default: hall_sensor1_int_default {
+			drive-strength = <6>;
+			bias-pull-up;
+		};
 	};
 };
 
+/*
 &spmi_bus {
 	qcom,pm8909@0 {
 		pm8909_pon: qcom,power-on@800 {
@@ -116,6 +145,8 @@
 		};
 	};
 };
+*/
+
 &pm8909_vadc {
 	chan@30 {
 		qcom,scale-function = <6>;
@@ -138,7 +169,7 @@
 				qcom,turn-off-delay-ms = <1000>;
 				qcom,source-sel = <1>;
 				qcom,mode-ctrl = <0x10>;
-				qcom,vin-ctrl = <0x02>;
+				qcom,vin-ctrl = <0x03>;
 			};
 		};
 	};
@@ -224,6 +255,8 @@
 		qcom,msm-mbhc-hphl-swh = <1>;
 		qcom,msm-mbhc-gnd-swh = <0>;
 		qcom,msm-hs-micbias-type = "internal";
+		/*shudan.liu@fih-foxconn.com add for mic hw judgement "MEMS" or "ECM"*/
+		qcom,msm-handset-mic-type = "MEMS";
 		qcom,msm-micbias1-ext-cap;
 		qcom,msm-micbias2-ext-cap;
 		qcom,audio-routing =
@@ -232,8 +265,10 @@
 			"INT_LDO_H", "MCLK",
 			"MIC BIAS Internal1", "Handset Mic",
 			"MIC BIAS Internal2", "Headset Mic",
+			"MIC BIAS Internal3", "Secondary Mic",
 			"AMIC1", "MIC BIAS Internal1",
-			"AMIC2", "MIC BIAS Internal2";
+			"AMIC2", "MIC BIAS Internal2",
+			"AMIC3", "MIC BIAS Internal3";
 		pinctrl-names = "cdc_lines_act",
 				"cdc_lines_sus";
 		pinctrl-0 = <&cdc_pdm_lines_act>;
@@ -288,6 +323,40 @@
 	i2c@78b9000 {/* BLSP1 QUP5 */
 		status = "disabled";
 	};
+
+	hall_sensor0 {
+		compatible = "hall-switch";
+		hall,gpio_name = "hall_sensor0_gpio";
+		hall,irq_name = "hall_sensor0_irq";
+		hall,dev_name = "hall_sensor0";
+		hall,input_name = "/dev/input/hall_sensor0";
+		pinctl-names = "default";
+		pinctrl-0 = <&hall_sensor0_int_default>;
+		interrupt-parent = <&msm_gpio>;
+		interrupts = <92 0x2003>;
+		vddio-supply = <&pm8909_l6>;
+		linux,gpio-int = <&msm_gpio 92 1>;
+		linux,wakeup;
+		linux,min-uv = <1800000>;
+		linux,max-uv = <1800000>;
+	};
+
+	hall_sensor1 {
+		compatible = "hall-switch";
+		hall,gpio_name = "hall_sensor1_gpio";
+		hall,irq_name = "hall_sensor1_irq";
+		hall,dev_name = "hall_sensor1";
+		hall,input_name = "/dev/input/hall_sensor1";
+		pinctl-names = "default";
+		pinctrl-0 = <&hall_sensor1_int_default>;
+		interrupt-parent = <&msm_gpio>;
+		interrupts = <36 0x2003>;
+		vddio-supply = <&pm8909_l6>;
+		linux,gpio-int = <&msm_gpio 36 1>;
+		linux,wakeup;
+		linux,min-uv = <1800000>;
+		linux,max-uv = <1800000>;
+	};
 };
 
 &pm8909_mpps {
@@ -296,7 +365,7 @@
 		qcom,mode = <1>;		/* Digital output */
 		qcom,invert = <0>;		/* Disable invert */
 		qcom,src-sel = <4>;		/* DTEST1 */
-		qcom,vin-sel = <0>;		/* VPH_PWR */
+		qcom,vin-sel = <3>;		/* LDO5 1.8V */
 		qcom,master-en = <1>;		/* Enable MPP */
 	};
 };
