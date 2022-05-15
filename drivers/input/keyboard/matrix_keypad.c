@@ -30,6 +30,9 @@
 #include <linux/sysfs.h>
 #include <linux/device.h>
 #include <linux/kobject.h>
+#include <linux/pinctrl/consumer.h>
+
+#define MATRIX_KEYPAD_PINCTRL_STATE_DEFAULT	"default"
 
 struct matrix_keypad {
 	const struct matrix_keypad_platform_data *pdata;
@@ -44,8 +47,12 @@ struct matrix_keypad {
 	bool scan_pending;
 	bool stopped;
 	bool gpio_all_disabled;
+	const char *keypad_hw_state;
+	struct pinctrl *pinctrl;
+	struct pinctrl_state *pinctrl_default;
 };
 
+static int matrix_keypad_pinctrl_init(struct device *dev, struct matrix_keypad *keypad);
 int scr_mod;
 /*
  * NOTE: normally the GPIO has to be put into HiZ when de-activated to cause
@@ -127,7 +134,7 @@ static void matrix_keypad_scan(struct work_struct *work)
 	const unsigned short *keycodes = input_dev->keycode;
 	const struct matrix_keypad_platform_data *pdata = keypad->pdata;
 	uint32_t new_state[MATRIX_MAX_COLS];
-	int row, col, code, count_state = 0;
+	int row, col, code;
 
 	/* de-activate all columns for scanning */
 	activate_all_cols(pdata, false);
@@ -136,25 +143,11 @@ static void matrix_keypad_scan(struct work_struct *work)
 
 	/* assert each column and read the row status out */
 	for (col = 0; col < pdata->num_col_gpios; col++) {
-
-		for (row = 0; row < pdata->num_row_gpios; row++) {
-			activate_col(pdata, col, true);
-			new_state[col] |=
-				row_asserted(pdata, row) ? (1 << row) : 0;
-			gpio_direction_output(pdata->col_gpios[col], 0);
-			new_state[col] &= row_asserted(pdata, row) ? ~(1 << row) : ~(0);
-		}
-			if (new_state[col])
-				count_state++;
-		activate_col(pdata, col, false);
-		for (row = 0; row < pdata->num_row_gpios; row++) {
-			gpio_direction_output(pdata->row_gpios[row], 0);
-			gpio_direction_input(pdata->row_gpios[row]);
-		}
+               activate_col(pdata, col, true);
+               for (row = 0; row < pdata->num_row_gpios; row++)
+                       new_state[col] |= row_asserted(pdata, row) ? (1 << row) : 0;
+               activate_col(pdata, col, false);
 	}
-
-	if (count_state == 5)
-		goto out;
 
 	for (col = 0; col < pdata->num_col_gpios; col++) {
 		uint32_t bits_changed;
@@ -164,8 +157,9 @@ static void matrix_keypad_scan(struct work_struct *work)
 			continue;
 
 		for (row = 0; row < pdata->num_row_gpios; row++) {
-			if ((bits_changed & (1 << row)) == 0)
+			if ((bits_changed & (1 << row)) == 0) {
 				continue;
+			}
 
 			code = MATRIX_SCAN_CODE(row, col, keypad->row_shift);
 			input_event(input_dev, EV_MSC, MSC_SCAN, code);
@@ -174,11 +168,11 @@ static void matrix_keypad_scan(struct work_struct *work)
 					 new_state[col] & (1 << row));
 		}
 	}
+
 	input_sync(input_dev);
 
 	memcpy(keypad->last_key_state, new_state, sizeof(new_state));
 
-out:
 	activate_all_cols(pdata, true);
 
 	mutex_lock(&keypad->lock);
@@ -320,7 +314,8 @@ static int matrix_keypad_init_gpio(struct platform_device *pdev,
 {
 	const struct matrix_keypad_platform_data *pdata = keypad->pdata;
 	int i, err;
-
+ 
+	matrix_keypad_pinctrl_init(&pdev->dev, keypad);
 	/* initialized strobe lines as outputs, activated */
 	for (i = 0; i < pdata->num_col_gpios; i++) {
 		err = gpio_request(pdata->col_gpios[i], "matrix_kbd_col");
@@ -444,7 +439,7 @@ matrix_keypad_parse_dt(struct device *dev)
 		pdata->no_autorepeat = true;
 	if (of_get_property(np, "linux,wakeup", NULL))
 		pdata->wakeup = true;
-	if (of_get_property(np, "gpio-activelow", NULL))
+	if (of_get_property(np, "gpio-active-low", NULL))
 		pdata->active_low = true;
 
 	pdata->name = of_get_property(np, "input-name", NULL);
@@ -483,6 +478,118 @@ matrix_keypad_parse_dt(struct device *dev)
 	return ERR_PTR(-EINVAL);
 }
 #endif
+
+static int matrix_keypad_pinctrl_init(struct device *dev, struct matrix_keypad *keypad)
+{
+	int err = 0;
+
+	keypad->keypad_hw_state = "ok";
+	keypad->pinctrl = devm_pinctrl_get(dev);
+	if (IS_ERR_OR_NULL(keypad->pinctrl)) {
+		dev_err(dev, "failed to get pinctrl!\n");
+		return PTR_ERR(keypad->pinctrl);
+	}
+
+	keypad->pinctrl_default = pinctrl_lookup_state(keypad->pinctrl,
+			MATRIX_KEYPAD_PINCTRL_STATE_DEFAULT);
+	if (IS_ERR_OR_NULL(keypad->pinctrl_default)) {
+		dev_err(dev, "failed to get pinctrl default state!\n");
+		return PTR_ERR(keypad->pinctrl_default);
+	}
+
+	err = pinctrl_select_state(keypad->pinctrl, keypad->pinctrl_default);
+	if (err) {
+		dev_err(dev, "can not set pin state!\n");
+		return err;
+	}
+
+	return 0;
+}
+
+//remove matrix self check functin for ui sw
+//if you need merge this branch for MTE/ENO sw
+//please enable this macro
+#if 0
+static int matrix_keypad_self_checking(struct platform_device *pdev, struct matrix_keypad *keypad)
+{
+	const struct matrix_keypad_platform_data *pdata = keypad->pdata;
+	int i, j, val;
+
+	dev_dbg(&pdev->dev, "%s: enter!\n", __func__);
+
+	keypad->keypad_hw_state = "fault";
+
+	//step 1, normal situation, no key will pressed
+	for (i = 0; i < pdata->num_row_gpios; i++) {
+		if (row_asserted(pdata, i)) {
+			dev_err(&pdev->dev, "%s: short circuit happen at row = %d !\n", __func__, i);
+			return -EIO;
+		}
+	}
+
+	//step 2, col short circuit check
+	for (i = 0; i < pdata->num_col_gpios - 1; i++) {
+		gpio_direction_output(pdata->col_gpios[i], pdata->active_low ? 1 : 0);
+		udelay(pdata->col_scan_delay_us);
+
+		for (j = i + 1; j < pdata->num_col_gpios; j++) {
+			val = gpio_get_value_cansleep(pdata->col_gpios[j]) ? pdata->active_low : !pdata->active_low;
+
+			gpio_direction_output(pdata->col_gpios[j], !pdata->active_low ? 1 : 0);
+
+			if (val) {
+				gpio_direction_output(pdata->col_gpios[i], !pdata->active_low ? 1 : 0);
+				dev_err(&pdev->dev, "%s: short circuit happen between column %d and column %d \n", __func__, i, j);
+				return -EIO;
+			}
+		}
+
+		gpio_direction_output(pdata->col_gpios[i], !pdata->active_low ? 1 : 0);
+		udelay(pdata->col_scan_delay_us);
+	}
+
+	//step 3, row short circuit check
+	for (i = 0; i < pdata->num_row_gpios - 1; i++) {
+		gpio_direction_output(pdata->row_gpios[i], !pdata->active_low ? 1 : 0);
+		udelay(pdata->col_scan_delay_us);
+
+		for (j = i + 1; j < pdata->num_row_gpios; j++) {
+			val = gpio_get_value_cansleep(pdata->row_gpios[j]) ? !pdata->active_low : pdata->active_low;
+
+			gpio_set_value_cansleep(pdata->row_gpios[j], pdata->active_low ? 1 : 0);
+			gpio_direction_input(pdata->row_gpios[j]);
+
+			if (val) {
+				gpio_set_value_cansleep(pdata->row_gpios[i], pdata->active_low ? 1 : 0);
+				gpio_direction_input(pdata->row_gpios[i]);
+				udelay(pdata->col_scan_delay_us);
+				dev_err(&pdev->dev, "%s: short circuit happened between row %d and row %d \n", __func__, i, j);
+				return -EIO;
+			}
+		}
+
+		gpio_set_value_cansleep(pdata->row_gpios[i], pdata->active_low ? 1 : 0);
+		gpio_direction_input(pdata->row_gpios[i]);
+		udelay(pdata->col_scan_delay_us);
+	}
+
+	keypad->keypad_hw_state = "ok";
+
+	dev_dbg(&pdev->dev, "%s: state ok!\n", __func__);
+
+	return 0;
+}
+#endif
+
+static ssize_t keypad_hw_state_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct matrix_keypad *keypad = dev_get_drvdata(dev);
+
+	return sprintf(buf, "%s", keypad->keypad_hw_state);
+}
+
+static DEVICE_ATTR(keypad_hw_state, 0444, keypad_hw_state_show, NULL);
 
 static ssize_t scr_mod_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
@@ -589,6 +696,18 @@ static int matrix_keypad_probe(struct platform_device *pdev)
 
 	device_init_wakeup(&pdev->dev, pdata->wakeup);
 	platform_set_drvdata(pdev, keypad);
+//remove matrix self check functin for ui sw
+//if you need merge this branch for MTE/ENO sw
+//please enable this macro
+#if 0
+	matrix_keypad_self_checking(pdev, keypad);
+#endif
+	err = device_create_file(&pdev->dev, &dev_attr_keypad_hw_state);
+	if (err) {
+		dev_err(&pdev->dev, "sys create keypad hw state file failed!\n");
+		input_unregister_device(keypad->input_dev);
+		goto err_free_gpio;
+	}
 
 	err = sysfs_create_file(&pdev->dev.kobj, &scr_mod_attribute.attr);
 	if (err) {
