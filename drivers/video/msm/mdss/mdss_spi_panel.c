@@ -26,6 +26,8 @@
 #include "mdss_spi_client.h"
 #include "mdp3.h"
 
+static int lcd_vendor_source = -1;
+
 DEFINE_LED_TRIGGER(bl_led_trigger);
 int mdss_spi_panel_reset(struct mdss_panel_data *pdata, int enable)
 {
@@ -85,10 +87,10 @@ int mdss_spi_panel_reset(struct mdss_panel_data *pdata, int enable)
 			pr_err("%s: Reset panel done\n", __func__);
 		}
 	} else {
-		gpio_set_value((ctrl_pdata->rst_gpio), 0);
+		gpio_set_value((ctrl_pdata->rst_gpio), 1);
 		gpio_free(ctrl_pdata->rst_gpio);
 
-		gpio_set_value(ctrl_pdata->disp_dc_gpio, 0);
+		gpio_set_value(ctrl_pdata->disp_dc_gpio, 1);
 		gpio_free(ctrl_pdata->disp_dc_gpio);
 	}
 	return rc;
@@ -519,7 +521,6 @@ int mdss_spi_panel_on(struct mdss_panel_data *pdata)
 	return 0;
 }
 
-
 static int mdss_spi_panel_off(struct mdss_panel_data *pdata)
 {
 	struct spi_panel_data *ctrl = NULL;
@@ -836,34 +837,43 @@ bool mdss_send_panel_cmd_for_esd(struct spi_panel_data *ctrl_pdata)
 
 bool mdss_spi_reg_status_check(struct spi_panel_data *ctrl_pdata)
 {
+	struct mdss_panel_data *pdata;
+	bool esd_check_failed;
+	int i, check_count;
 	int ret = 0;
-	int i = 0;
+#define ESD_CHECK_MAX	(3)
 
 	if (ctrl_pdata == NULL) {
 		pr_err("%s: Invalid input data\n", __func__);
 		return false;
 	}
 
+	pdata = &ctrl_pdata->panel_data;
+
 	pr_debug("%s: Checking Register status\n", __func__);
 
-	ret = mdss_spi_read_panel_data(&ctrl_pdata->panel_data,
-					ctrl_pdata->panel_status_reg,
-					ctrl_pdata->act_status_value,
-					ctrl_pdata->status_cmds_rlen);
-	if (ret < 0) {
-		pr_err("%s: Read status register returned error\n", __func__);
-	} else {
-		for (i = 0; i < ctrl_pdata->status_cmds_rlen; i++) {
-			pr_debug("act_value[%d] = %x, exp_value[%d] = %x\n",
-					i, ctrl_pdata->act_status_value[i],
-					i, ctrl_pdata->exp_status_value[i]);
-			if (ctrl_pdata->act_status_value[i] !=
-					ctrl_pdata->exp_status_value[i])
-				return false;
+	for (check_count = 0; check_count < ESD_CHECK_MAX; check_count++) {
+		ret = mdss_spi_read_panel_data(&ctrl_pdata->panel_data,
+				ctrl_pdata->panel_status_reg,
+				ctrl_pdata->act_status_value,
+				ctrl_pdata->status_cmds_rlen);
+		if (ret >= 0) {
+			for (i = 0, esd_check_failed = false; i < ctrl_pdata->status_cmds_rlen; i++) {
+				if (ctrl_pdata->act_status_value[i] != ctrl_pdata->exp_status_value[i]) {
+					esd_check_failed = true;
+					break;
+				}
+			}
+
+			if (!esd_check_failed) {
+				return true;
+			}
 		}
 	}
 
-	return true;
+//failure judgement: (spi read protocol fail || read data not match)
+	//mdss_send_panel_cmd_for_esd(ctrl_pdata);
+	return false;
 }
 
 static void mdss_spi_parse_esd_params(struct device_node *np,
@@ -1158,14 +1168,31 @@ static void mdss_spi_panel_bklt_pwm(struct spi_panel_data *ctrl, int level)
 	}
 }
 
+int bkl_flag=0;//add by nanasu@t2mobile.com for workaround of bug1549
+int count =0;
 static void mdss_spi_panel_bl_ctrl(struct mdss_panel_data *pdata,
 							u32 bl_level)
 {
 	/* Allow panel backlight update if secure UI is enabled */
 	if (bl_level && !mdp3_res->secure_update_bl) {
+                printk("[bkl][mdss_spi_panel_bl_ctrl]bl_level=true,bl_level=%d\n",bl_level);
 		mdp3_res->bklt_level = bl_level;
-		mdp3_res->bklt_update = true;
+           if(bkl_flag==1){
+             printk("[bkl]11flag=1\n");
+             mdp3_res->bklt_update = true;
+             count++;
+              if(count>=2)
+              bkl_flag =0;
+           }
+           else{
+             printk("[bkl]22flag=0\n");
+             mdss_spi_panel_bl_ctrl_update(pdata, bl_level);
+           }
 	} else {
+                printk("[bkl][mdss_spi_panel_bl_ctrl]bl_level=false!!,bl_level=%d\n",bl_level);
+                bkl_flag=1;
+                count = 0;
+                printk("[bkl]33flag=1\n");
 		mdss_spi_panel_bl_ctrl_update(pdata, bl_level);
 	}
 }
@@ -1174,6 +1201,7 @@ void mdss_spi_panel_bl_ctrl_update(struct mdss_panel_data *pdata,
 							u32 bl_level)
 {
 	struct spi_panel_data *ctrl_pdata = NULL;
+#define BACKLIGHT_BRIGHTNESS_SCALE (220)
 
 	if (pdata == NULL) {
 		pr_err("%s: Invalid input data\n", __func__);
@@ -1182,6 +1210,13 @@ void mdss_spi_panel_bl_ctrl_update(struct mdss_panel_data *pdata,
 
 	ctrl_pdata = container_of(pdata, struct spi_panel_data,
 				panel_data);
+
+	if (bl_level > pdata->panel_info.bl_max) {
+		bl_level = pdata->panel_info.bl_max;
+	}
+
+	bl_level *= BACKLIGHT_BRIGHTNESS_SCALE;
+	bl_level /= pdata->panel_info.bl_max;
 
 	if ((bl_level < pdata->panel_info.bl_min) && (bl_level != 0))
 		bl_level = pdata->panel_info.bl_min;
@@ -1224,6 +1259,13 @@ int mdss_spi_panel_init(struct device_node *node,
 	} else {
 		pr_info("%s: Panel Name = %s\n", __func__, panel_name);
 		strlcpy(&pinfo->panel_name[0], panel_name, MDSS_MAX_PANEL_LEN);
+		if (!strncmp(panel_name, "gc9305_first", strlen("gc9305_first"))) {
+			lcd_vendor_source = 1;
+		} else if (!strncmp(panel_name, "gc9305_second", strlen("gc9305_second"))) {
+			lcd_vendor_source = 2;
+		} else if (!strncmp(panel_name, "gc9305_third", strlen("gc9305_third"))) {
+			lcd_vendor_source = 3;
+		}
 	}
 	rc = mdss_spi_panel_parse_dt(node, ctrl_pdata);
 	if (rc) {
@@ -1538,6 +1580,39 @@ end:
 	return spi_pan_node;
 }
 
+static ssize_t panel_lcd_id_show(struct class *class,
+		struct class_attribute *attr, char *buf)
+{
+	int primus_result = 0xFFFF;
+	switch (lcd_vendor_source) {
+	case 1: //first source
+		primus_result = 0x0100;
+		break;
+	case 2: //second source
+		primus_result = 0x0140;
+		break;
+	case 3: //third source
+		primus_result = 0x0180;
+		break;
+	case 4: //forth source, for now unuse
+	default:
+		primus_result = 0xFFFF;
+		break;
+
+	}
+
+	return sprintf(buf, "LCD_%04x\n", primus_result);
+}
+
+static ssize_t panel_lcd_id_store(struct class *class, struct class_attribute *attr,
+			const char *buf, size_t count)
+{
+       printk("not supported!\n ");
+	return count;
+}
+
+static struct class_attribute panel_lcd_id =
+	__ATTR(status, 0664, panel_lcd_id_show, panel_lcd_id_store);
 
 static int mdss_spi_panel_probe(struct platform_device *pdev)
 {
@@ -1549,6 +1624,8 @@ static int mdss_spi_panel_probe(struct platform_device *pdev)
 	char panel_cfg[MDSS_MAX_PANEL_LEN];
 	struct mdss_util_intf *util;
 	const char *ctrl_name;
+
+	struct class *class_lcd_id;
 
 	util = mdss_get_util_intf();
 	if (util == NULL) {
@@ -1656,13 +1733,31 @@ static int mdss_spi_panel_probe(struct platform_device *pdev)
 	init_completion(&ctrl_pdata->spi_panel_te);
 	mutex_init(&ctrl_pdata->spi_tx_mutex);
 
+	rc = gpio_request(ctrl_pdata->disp_te_gpio, "panel_te_gpio");
+	if (rc) {
+		pr_err("%s: panel te gpio request fail!\n", __func__);
+		goto error_pan_node;
+	}
+
+	gpio_direction_input(ctrl_pdata->disp_te_gpio);
+
 	rc = devm_request_irq(&pdev->dev,
 		gpio_to_irq(ctrl_pdata->disp_te_gpio),
-		spi_panel_te_handler, IRQF_TRIGGER_RISING,
+		spi_panel_te_handler, IRQF_TRIGGER_FALLING,
 		"TE_GPIO", ctrl_pdata);
 	if (rc) {
 		pr_err("TE request_irq failed.\n");
 		return rc;
+	}
+
+	class_lcd_id = class_create(THIS_MODULE, "panel_lcd_id");
+	if (IS_ERR(class_lcd_id)) {
+		rc = PTR_ERR(class_lcd_id);
+		pr_err("%s: couldn't create class panel_lcd_id\n", __func__);
+	}
+	rc = class_create_file(class_lcd_id, &panel_lcd_id);
+	if (rc) {
+		pr_err("%s: couldn't create file panel_lcd_id status\n", __func__);
 	}
 
 	pr_debug("%s: spi panel  initialized\n", __func__);

@@ -18,7 +18,7 @@
 #include <linux/qpnp/pin.h>
 #include <linux/delay.h>
 
-#define MAX_READ_SPEED_HZ	9600000
+#define MAX_READ_SPEED_HZ	4800000
 #define SPI_PANEL_COMMAND_LEN	1
 static struct spi_device *mdss_spi_client;
 
@@ -72,6 +72,11 @@ int mdss_spi_read_data(u8 reg_addr, u8 *data, u8 len)
 
 	return rc;
 }
+
+//JWJ add start
+//static int dc_gpio;
+//static int reset_gpio;
+//JWJ add end
 
 int mdss_spi_tx_command(const void *buf)
 {
@@ -159,6 +164,44 @@ static int mdss_spi_client_probe(struct spi_device *spidev)
 	pr_debug("cs[%x] CPHA[%x] CPOL[%x] CS_HIGH[%x] Max_speed[%d]\n",
 		cs, cpha, cpol, cs_high, max_speed);
 	mdss_spi_client = spidev;
+      
+        // JWJ add start  
+#if 0 
+        pr_err( "JWJ start GPIO settings  %s %d\n", __func__, __LINE__);
+        pr_err( "JWJ Need to add following  GPIOs in msm8905-qrd-skub.dtsi  %s %d\n", __func__, __LINE__);
+        dc_gpio = of_get_named_gpio(np, "dc-gpio", 0);
+	if (!gpio_is_valid(dc_gpio))
+		pr_err("%s %d,spi panel dc gpio is not valid\n",
+						__func__, __LINE__);
+	if (gpio_request(dc_gpio, "dc-gpios"))
+		pr_err("%s %d spi panel dc gpio_request failed\n",
+						__func__, __LINE__);
+
+
+	reset_gpio = of_get_named_gpio(np, "reset-gpio", 0);
+	if (!gpio_is_valid(reset_gpio))
+		pr_err("%s %d,spi panel reset gpio is not valid\n",
+						__func__, __LINE__);
+	if (gpio_request(reset_gpio, "reset-gpios"))
+		pr_err("%s %d spi panel reset gpio_request failed\n",
+						__func__, __LINE__);
+
+
+	if (gpio_direction_output(dc_gpio, 1))
+		pr_err("%s %d set spi panel dc gpio direction failed\n",
+						__func__, __LINE__);
+
+	//gpio_direction_output(reset_gpio, 1);
+	gpio_direction_output(dc_gpio, 1);
+	gpio_set_value(reset_gpio, 1);
+	mdelay(120);
+	gpio_set_value(reset_gpio, 0);
+	mdelay(120);
+	gpio_set_value(reset_gpio, 1);
+	mdelay(120);
+        pr_err( "JWJ GPIO settings finished  %s %d\n", __func__, __LINE__);
+#endif
+        //JWJ add end
 
 	return 0;
 }

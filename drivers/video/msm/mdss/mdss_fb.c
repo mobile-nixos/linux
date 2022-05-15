@@ -303,6 +303,9 @@ static ssize_t mdss_fb_get_type(struct device *dev,
 	case EDP_PANEL:
 		ret = snprintf(buf, PAGE_SIZE, "edp panel\n");
 		break;
+	case SPI_PANEL:
+		ret = snprintf(buf, PAGE_SIZE, "spi panel\n");
+		break;
 	default:
 		ret = snprintf(buf, PAGE_SIZE, "unknown panel\n");
 		break;

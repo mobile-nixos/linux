@@ -1385,16 +1385,22 @@ static int mdp3_ctrl_display_commit_kickoff(struct msm_fb_data_type *mfd,
 	}
 
 	if (mdp3_session->first_commit) {
-		/*wait to ensure frame is sent to panel*/
-		if (panel_info->mipi.post_init_delay)
-			msleep(((1000 / frame_rate) + 1) *
-					panel_info->mipi.post_init_delay);
-		else
-			msleep(1000 / frame_rate);
-		mdp3_session->first_commit = false;
-		rc |= panel->event_handler(panel,
-					MDSS_EVENT_POST_PANEL_ON, NULL);
-
+		if (mdp3_ctrl_get_intf_type(mfd) != MDP3_DMA_OUTPUT_SEL_SPI_CMD) {
+			/*wait to ensure frame is sent to panel*/
+			if (panel_info->mipi.post_init_delay)
+				msleep(((1000 / frame_rate) + 1) *
+						panel_info->mipi.post_init_delay);
+			else
+				msleep(1000 / frame_rate);
+			mdp3_session->first_commit = false;
+			rc |= panel->event_handler(panel,
+						MDSS_EVENT_POST_PANEL_ON, NULL);
+		} else {
+			if (splash_done) {
+				msleep(SPI_PANEL_INIT_DELAY);
+			}
+			mdp3_session->first_commit = false;
+		}
 	}
 
 	mdp3_session->vsync_before_commit = 0;
@@ -2800,10 +2806,6 @@ int mdp3_ctrl_init(struct msm_fb_data_type *mfd)
 	rc = mdp3_create_sysfs_link(dev);
 	if (rc)
 		pr_warn("problem creating link to mdp sysfs\n");
-
-	/* Enable PM runtime */
-	pm_runtime_set_suspended(&mdp3_res->pdev->dev);
-	pm_runtime_enable(&mdp3_res->pdev->dev);
 
 	kobject_uevent(&dev->kobj, KOBJ_ADD);
 	pr_debug("vsync kobject_uevent(KOBJ_ADD)\n");
