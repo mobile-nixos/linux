@@ -123,6 +123,8 @@
 
 #define QPNP_VM_BMS_DEV_NAME		"qcom,qpnp-vm-bms"
 
+extern int real_status;
+
 /* indicates the state of BMS */
 enum {
 	IDLE_STATE,
@@ -406,11 +408,17 @@ static int qpnp_secure_write_wrapper(struct qpnp_bms_chip *chip, u8 *val,
 	return rc;
 }
 
+extern bool need_keep_100;
+
 static int backup_ocv_soc(struct qpnp_bms_chip *chip, int ocv_uv, int soc)
 {
 	int rc;
 	u16 ocv_mv = ocv_uv / 1000;
-
+	if(need_keep_100 && soc == 99)
+	{
+		soc = 100;
+		printk("need keep 100 \n");
+	}
 	rc = qpnp_write_wrapper(chip, (u8 *)&ocv_mv,
 				chip->base + BMS_OCV_REG, 2);
 	if (rc)
@@ -947,6 +955,40 @@ static int adjust_uuc(struct qpnp_bms_chip *chip, int soc_uuc)
 
 	return chip->prev_soc_uuc;
 }
+static int get_battery_voltage(struct qpnp_bms_chip *chip, int *result_uv);
+static int batt_voltage_now_mv=0;
+static int clamp_soc_based_on_voltage(struct qpnp_bms_chip *chip, int soc, int batt_temp)
+{
+	int rc, vbat_uv;
+
+	rc = get_battery_voltage(chip, &vbat_uv);
+	if (rc < 0) {
+		pr_err("adc vbat failed err = %d\n", rc);
+		return soc;
+	}
+	batt_voltage_now_mv = vbat_uv/1000;
+
+	if(batt_temp>0){
+
+		/* only clamp when discharging */
+		if (is_battery_charging(chip))
+			return soc;
+
+		if (soc <= 0 && vbat_uv > chip->dt.cfg_v_cutoff_uv) {
+			pr_err("clamping soc to 1, vbat (%d) > cutoff (%d)\n",	vbat_uv, chip->dt.cfg_v_cutoff_uv);
+			return 1;
+		} else if(vbat_uv < (chip->dt.cfg_v_cutoff_uv-200000)){
+			pr_err("clamping soc to 0, vbat (%d) < cutoff (%d)\n",	vbat_uv, chip->dt.cfg_v_cutoff_uv-200000);
+			return 0;
+		}
+		else if(soc > 1 && vbat_uv < chip->dt.cfg_v_cutoff_uv){
+			pr_err("clamping soc to 1, vbat (%d) < cutoff (%d)\n",	vbat_uv, chip->dt.cfg_v_cutoff_uv);
+			return 1;
+		}
+
+	}
+	return soc;
+}
 
 static int lookup_soc_ocv(struct qpnp_bms_chip *chip, int ocv_uv, int batt_temp)
 {
@@ -1008,7 +1050,7 @@ static int lookup_soc_ocv(struct qpnp_bms_chip *chip, int ocv_uv, int batt_temp)
 			chip->prev_soc_uuc = -EINVAL;
 		}
 	}
-
+soc_final = clamp_soc_based_on_voltage(chip,soc_final,batt_temp);
 	soc_final = bound_soc(soc_final);
 
 	pr_debug("soc_final=%d soc_ocv=%d soc_cutoff=%d ocv_uv=%u batt_temp=%d\n",
@@ -1207,7 +1249,8 @@ static int get_battery_status(struct qpnp_bms_chip *chip)
 		/* if battery has been registered, use the status property */
 		chip->batt_psy->get_property(chip->batt_psy,
 					POWER_SUPPLY_PROP_STATUS, &ret);
-		return ret.intval;
+		return real_status;		
+//		return ret.intval;
 	}
 
 	/* Default to false if the battery power supply is not registered. */
@@ -1237,6 +1280,11 @@ static int get_batt_therm(struct qpnp_bms_chip *chip, int *batt_temp)
 static int get_prop_bms_rbatt(struct qpnp_bms_chip *chip)
 {
 	return chip->batt_data->default_rbatt_mohm;
+}
+
+static int get_prop_bms_resistance_id(struct qpnp_bms_chip *chip)
+{
+	return chip->batt_data->batt_id_kohm;
 }
 
 static int get_rbatt(struct qpnp_bms_chip *chip, int soc, int batt_temp)
@@ -1416,7 +1464,7 @@ static int report_eoc(struct qpnp_bms_chip *chip)
 				POWER_SUPPLY_PROP_STATUS, &ret);
 		if (rc) {
 			pr_err("Unable to get battery 'STATUS' rc=%d\n", rc);
-		} else if (ret.intval != POWER_SUPPLY_STATUS_FULL) {
+		} else if (real_status != POWER_SUPPLY_STATUS_FULL) {
 			pr_debug("Report EOC to charger\n");
 			ret.intval = POWER_SUPPLY_STATUS_FULL;
 			rc = chip->batt_psy->set_property(chip->batt_psy,
@@ -2012,7 +2060,7 @@ static void calculate_reported_soc(struct qpnp_bms_chip *chip)
 	pr_debug("bms power_supply_changed\n");
 	power_supply_changed(&chip->bms_psy);
 }
-
+#if 0
 static int clamp_soc_based_on_voltage(struct qpnp_bms_chip *chip, int soc)
 {
 	int rc, vbat_uv;
@@ -2037,7 +2085,7 @@ static int clamp_soc_based_on_voltage(struct qpnp_bms_chip *chip, int soc)
 		return soc;
 	}
 }
-
+#endif
 static void battery_voltage_check(struct qpnp_bms_chip *chip)
 {
 	int rc, vbat_uv = 0;
@@ -2092,7 +2140,7 @@ static void monitor_soc_work(struct work_struct *work)
 			new_soc = lookup_soc_ocv(chip, chip->last_ocv_uv,
 								batt_temp);
 			/* clamp soc due to BMS hw/sw immaturities */
-			new_soc = clamp_soc_based_on_voltage(chip, new_soc);
+			//new_soc = clamp_soc_based_on_voltage(chip, new_soc);
 
 			if (chip->calculated_soc != new_soc) {
 				pr_debug("SOC changed! new_soc=%d prev_soc=%d\n",
@@ -2216,6 +2264,7 @@ static enum power_supply_property bms_power_props[] = {
 	POWER_SUPPLY_PROP_BATTERY_TYPE,
 	POWER_SUPPLY_PROP_TEMP,
 	POWER_SUPPLY_PROP_CYCLE_COUNT,
+	POWER_SUPPLY_PROP_RESISTANCE_ID
 };
 
 static int
@@ -2254,6 +2303,9 @@ static int qpnp_vm_bms_power_get_property(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_RESISTANCE:
 		val->intval = get_prop_bms_rbatt(chip);
+		break;
+	case POWER_SUPPLY_PROP_RESISTANCE_ID:
+		val->intval = get_prop_bms_resistance_id(chip);
 		break;
 	case POWER_SUPPLY_PROP_RESISTANCE_CAPACITIVE:
 		if (chip->batt_data->rbatt_capacitive_mohm > 0)
@@ -2906,6 +2958,10 @@ static int calculate_initial_soc(struct qpnp_bms_chip *chip)
 			chip->last_soc = chip->shutdown_soc;
 			chip->calculated_soc = lookup_soc_ocv(chip,
 						chip->shutdown_ocv, batt_temp);
+			if(chip->shutdown_soc == 100 && chip->calculated_soc == 99)
+			{
+				chip->calculated_soc = 100;
+			}
 			pr_debug("Using shutdown SOC\n");
 		}
 	} else {
@@ -2927,6 +2983,10 @@ static int calculate_initial_soc(struct qpnp_bms_chip *chip)
 			chip->last_soc = chip->shutdown_soc;
 			chip->calculated_soc = lookup_soc_ocv(chip,
 						chip->shutdown_ocv, batt_temp);
+			if(chip->shutdown_soc == 100 && chip->calculated_soc == 99)
+			{
+				chip->calculated_soc = 100;
+			}		
 			pr_debug("Using shutdown SOC\n");
 		} else {
 			chip->shutdown_soc_invalid = true;
