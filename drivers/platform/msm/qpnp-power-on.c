@@ -166,6 +166,11 @@ struct qpnp_pon {
 };
 
 static struct qpnp_pon *sys_reset_dev;
+static int major;
+static struct class *qpnp_pon_cls;//add by nanasu
+struct device *qpnp_pon_dev;
+int poff_reason_index;
+int pon_reason_index;
 
 static u32 s1_delay[PON_S1_COUNT_MAX + 1] = {
 	0 , 32, 56, 80, 138, 184, 272, 408, 608, 904, 1352, 2048,
@@ -1473,6 +1478,41 @@ static void qpnp_pon_debugfs_remove(struct spmi_device *spmi)
 {}
 #endif
 
+//add by nanasu
+static ssize_t poff_reason_show ( struct device *dev,
+                                      struct device_attribute *attr, char *buf )
+{
+   if(poff_reason_index >= ARRAY_SIZE(qpnp_poff_reason) || poff_reason_index < 0)
+   return sprintf ( buf, "%s\n", "Unknown power-off reason");
+   else
+   return sprintf ( buf, "%s\n", qpnp_poff_reason[poff_reason_index]);
+}
+static ssize_t poff_reason_store ( struct device *dev,
+                                       struct device_attribute *attr, const char *buf, size_t size )
+{
+   printk("Not Support Write Function\n");
+   return size;
+
+}
+static DEVICE_ATTR(poff_reason, 0664, poff_reason_show, poff_reason_store);
+
+static ssize_t pon_reason_show ( struct device *dev,
+                                      struct device_attribute *attr, char *buf )
+{
+   if(pon_reason_index >= ARRAY_SIZE(qpnp_pon_reason) || pon_reason_index < 0)
+   return sprintf ( buf, "%s\n", "Unknown power-on reason");
+   else
+   return sprintf ( buf, "%s\n", qpnp_pon_reason[pon_reason_index]);
+}
+static ssize_t pon_reason_store ( struct device *dev,
+                                       struct device_attribute *attr, const char *buf, size_t size )
+{
+   printk("Not Support Write Function\n");
+   return size;
+
+}
+static DEVICE_ATTR(pon_reason, 0664, pon_reason_show, pon_reason_store);
+
 static int qpnp_pon_probe(struct spmi_device *spmi)
 {
 	struct qpnp_pon *pon;
@@ -1543,12 +1583,23 @@ static int qpnp_pon_probe(struct spmi_device *spmi)
 
 	index = ffs(pon_sts) - 1;
 	cold_boot = !qpnp_pon_is_warm_reset();
+	/* nanasu:create device node sys/class/qpnp_pon/qpnp_pon*/
+		qpnp_pon_cls = class_create(THIS_MODULE, "qpnp_pon");
+		qpnp_pon_dev = device_create(qpnp_pon_cls, NULL, MKDEV(major, 0), NULL, "qpnp_pon"); 
+
+                if (device_create_file(qpnp_pon_dev, &dev_attr_pon_reason) < 0)
+		    pr_err("Failed to create device file(%s)!\n", dev_attr_pon_reason.attr.name);
+		if (device_create_file(qpnp_pon_dev, &dev_attr_poff_reason) < 0)
+		    pr_err("Failed to create device file(%s)!\n", dev_attr_poff_reason.attr.name);
+
 	if (index >= ARRAY_SIZE(qpnp_pon_reason) || index < 0) {
+
 		dev_info(&pon->spmi->dev,
 			"PMIC@SID%d Power-on reason: Unknown and '%s' boot\n",
 			pon->spmi->sid, cold_boot ? "cold" : "warm");
 	} else {
 		pon->pon_trigger_reason = index;
+                pon_reason_index = index;
 		dev_info(&pon->spmi->dev,
 			"PMIC@SID%d Power-on reason: %s and '%s' boot\n",
 			pon->spmi->sid, qpnp_pon_reason[index],
@@ -1571,6 +1622,7 @@ static int qpnp_pon_probe(struct spmi_device *spmi)
 				pon->spmi->sid);
 	} else {
 		pon->pon_power_off_reason = index;
+                poff_reason_index = index;
 		dev_info(&pon->spmi->dev,
 				"PMIC@SID%d: Power-off reason: %s\n",
 				pon->spmi->sid,
