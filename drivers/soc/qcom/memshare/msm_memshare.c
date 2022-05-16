@@ -162,9 +162,12 @@ void free_mem_clients(int proc)
 				!memblock[i].guarantee) {
 			pr_debug("Freeing memory for client id: %d\n",
 					memblock[i].client_id);
+				if(memblock[i].size > 0)
+				{
 			dma_free_attrs(memsh_drv->dev, memblock[i].size,
 				memblock[i].virtual_addr, memblock[i].phy_addr,
 				&attrs);
+				}
 			free_client(i);
 		}
 	}
