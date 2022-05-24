@@ -395,7 +395,11 @@ static int msm_pcm_volume_ctl_get(struct snd_kcontrol *kcontrol,
 	pr_debug("%s\n", __func__);
 	if ((!substream) || (!substream->runtime)) {
 		pr_err("%s substream or runtime not found\n", __func__);
+#if 1 /* Patch by Affe Null for Bananian */
+		ucontrol->value.integer.value[0] = 0;
+#else
 		rc = -ENODEV;
+#endif
 		goto exit;
 	}
 
