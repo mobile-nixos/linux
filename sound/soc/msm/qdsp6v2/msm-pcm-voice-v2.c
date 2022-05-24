@@ -607,24 +607,35 @@ static int msm_voice_cvd_version_get(struct snd_kcontrol *kcontrol,
 
 	return 0;
 }
+#if 1 /* Patch by Affe Null for Bananian */
+static int msm_voice_dummy_get(struct snd_kcontrol *kcontrol,
+		struct snd_ctl_elem_value *ucontrol)
+{
+	ucontrol->value.integer.value[0] = 0;
+	return 0;
+}
+#define DUMMY_GET msm_voice_dummy_get
+#else
+#define DUMMY_GET NULL
+#endif
 static struct snd_kcontrol_new msm_voice_controls[] = {
 	SOC_SINGLE_MULTI_EXT("Voice Rx Device Mute", SND_SOC_NOPM, 0, VSID_MAX,
-				0, 3, NULL, msm_voice_rx_device_mute_put),
+				0, 3, DUMMY_GET, msm_voice_rx_device_mute_put),
 	SOC_SINGLE_MULTI_EXT("Voice Tx Device Mute", SND_SOC_NOPM, 0, VSID_MAX,
-				0, 3, NULL, msm_voice_tx_device_mute_put),
+				0, 3, DUMMY_GET, msm_voice_tx_device_mute_put),
 	SOC_SINGLE_MULTI_EXT("Voice Tx Mute", SND_SOC_NOPM, 0, VSID_MAX,
-				0, 3, NULL, msm_voice_mute_put),
+				0, 3, DUMMY_GET, msm_voice_mute_put),
 	SOC_SINGLE_MULTI_EXT("Voice Rx Gain", SND_SOC_NOPM, 0, VSID_MAX, 0, 3,
-				NULL, msm_voice_gain_put),
+				DUMMY_GET, msm_voice_gain_put),
 	SOC_ENUM_EXT("TTY Mode", msm_tty_mode_enum[0], msm_voice_tty_mode_get,
 				msm_voice_tty_mode_put),
 	SOC_SINGLE_MULTI_EXT("Slowtalk Enable", SND_SOC_NOPM, 0, VSID_MAX, 0, 2,
-				NULL, msm_voice_slowtalk_put),
+				DUMMY_GET, msm_voice_slowtalk_put),
 	SOC_SINGLE_MULTI_EXT("Voice Topology Disable", SND_SOC_NOPM, 0,
-			     VSID_MAX, 0, 2, NULL,
+			     VSID_MAX, 0, 2, DUMMY_GET,
 			     msm_voice_topology_disable_put),
 	SOC_SINGLE_MULTI_EXT("HD Voice Enable", SND_SOC_NOPM, 0, VSID_MAX, 0, 2,
-			     NULL, msm_voice_hd_voice_put),
+			     DUMMY_GET, msm_voice_hd_voice_put),
 	{
 		.access = SNDRV_CTL_ELEM_ACCESS_READ,
 		.iface	= SNDRV_CTL_ELEM_IFACE_MIXER,

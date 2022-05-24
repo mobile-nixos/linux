@@ -1067,6 +1067,7 @@ static const struct snd_kcontrol_new dolby_dap_param_end_point_controls[] = {
 
 void msm_dolby_dap_add_controls(struct snd_soc_platform *platform)
 {
+#if 0 /* Disable for Bananian */
 	snd_soc_add_platform_controls(platform,
 				dolby_license_controls,
 			ARRAY_SIZE(dolby_license_controls));
@@ -1090,4 +1091,5 @@ void msm_dolby_dap_add_controls(struct snd_soc_platform *platform)
 	snd_soc_add_platform_controls(platform,
 				dolby_dap_param_end_point_controls,
 			ARRAY_SIZE(dolby_dap_param_end_point_controls));
+#endif
 }

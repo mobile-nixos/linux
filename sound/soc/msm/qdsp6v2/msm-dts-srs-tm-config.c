@@ -264,6 +264,7 @@ static const struct snd_kcontrol_new lpa_srs_trumedia_controls_mi2s[] = {
 };
 void msm_dts_srs_tm_add_controls(struct snd_soc_platform *platform)
 {
+#if 0 /* Disable for Bananian */
 	snd_soc_add_platform_controls(platform,
 				lpa_srs_trumedia_controls,
 			ARRAY_SIZE(lpa_srs_trumedia_controls));
@@ -278,6 +279,7 @@ void msm_dts_srs_tm_add_controls(struct snd_soc_platform *platform)
 	snd_soc_add_platform_controls(platform,
 				lpa_srs_trumedia_controls_mi2s,
 			ARRAY_SIZE(lpa_srs_trumedia_controls_mi2s));
+#endif
 }
 
 static int reg_ion_mem(void)

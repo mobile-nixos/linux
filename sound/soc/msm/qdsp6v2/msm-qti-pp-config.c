@@ -875,6 +875,7 @@ void msm_qti_pp_add_controls(struct snd_soc_platform *platform)
 				multi_ch_channel_map_mixer_controls,
 			ARRAY_SIZE(multi_ch_channel_map_mixer_controls));
 
+#if 0 /* Disable for Bananian */
 	snd_soc_add_platform_controls(platform, get_rms_controls,
 			ARRAY_SIZE(get_rms_controls));
 
@@ -889,4 +890,5 @@ void msm_qti_pp_add_controls(struct snd_soc_platform *platform)
 
 	snd_soc_add_platform_controls(platform, asphere_mixer_controls,
 			ARRAY_SIZE(asphere_mixer_controls));
+#endif
 }

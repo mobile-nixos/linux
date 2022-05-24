@@ -289,17 +289,28 @@ static int msm_voip_dtx_mode_get(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
+#if 1 /* Patch by Affe Null for Bananian */
+static int msm_voice_dummy_get(struct snd_kcontrol *kcontrol,
+		struct snd_ctl_elem_value *ucontrol)
+{
+	ucontrol->value.integer.value[0] = 0;
+	return 0;
+}
+#define DUMMY_GET msm_voice_dummy_get
+#else
+#define DUMMY_GET NULL
+#endif
 static struct snd_kcontrol_new msm_voip_controls[] = {
 	SOC_SINGLE_MULTI_EXT("Voip Tx Mute", SND_SOC_NOPM, 0,
 			     MAX_RAMP_DURATION,
-			     0, 2, NULL, msm_voip_mute_put),
+			     0, 2, DUMMY_GET, msm_voip_mute_put),
 	SOC_SINGLE_MULTI_EXT("Voip Rx Gain", SND_SOC_NOPM, 0,
 			     MAX_RAMP_DURATION,
-			     0, 2, NULL, msm_voip_gain_put),
+			     0, 2, DUMMY_GET, msm_voip_gain_put),
 	SOC_SINGLE_EXT("Voip Mode Config", SND_SOC_NOPM, 0, VOIP_MODE_MAX, 0,
 		       msm_voip_mode_config_get, msm_voip_mode_config_put),
 	SOC_SINGLE_EXT("Voip Rate Config", SND_SOC_NOPM, 0, VOIP_RATE_MAX, 0,
-		       NULL, msm_voip_rate_config_put),
+		       DUMMY_GET, msm_voip_rate_config_put),
 	SOC_SINGLE_MULTI_EXT("Voip Evrc Min Max Rate Config", SND_SOC_NOPM,
 			     0, VOC_1_RATE, 0, 2,
 			     msm_voip_evrc_min_max_rate_config_get,
