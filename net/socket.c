@@ -88,7 +88,6 @@
 #include <linux/magic.h>
 #include <linux/slab.h>
 #include <linux/xattr.h>
-#include <linux/qmp_sphinx_instrumentation.h>
 
 #include <asm/uaccess.h>
 #include <asm/unistd.h>
@@ -1793,8 +1792,6 @@ SYSCALL_DEFINE6(sendto, int, fd, void __user *, buff, size_t, len,
 	struct iovec iov;
 	int fput_needed;
 
-	qmp_sphinx_logk_sendto(fd, buff, len, flags, addr, addr_len);
-
 	if (len > INT_MAX)
 		len = INT_MAX;
 	if (unlikely(!access_ok(VERIFY_READ, buff, len)))
@@ -1855,8 +1852,6 @@ SYSCALL_DEFINE6(recvfrom, int, fd, void __user *, ubuf, size_t, size,
 	struct sockaddr_storage address;
 	int err, err2;
 	int fput_needed;
-
-	qmp_sphinx_logk_recvfrom(fd, ubuf, size, flags, addr, addr_len);
 
 	if (size > INT_MAX)
 		size = INT_MAX;
