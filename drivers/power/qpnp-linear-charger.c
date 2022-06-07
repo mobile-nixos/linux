@@ -1363,9 +1363,6 @@ static int64_t qpnp_lbc_get_battery_id(struct qpnp_lbc_chip *chip)
 		pr_err("error reading batt id channel = %d, rc = %d\n",
 					LR_MUX2_BAT_ID, rc);
 		return rc;
-	} else {
-		pr_info("batt id channel = %d, batt_id = %lld\n",
-				LR_MUX2_BAT_ID, result.physical);
 	}
 
 	return result.physical;
