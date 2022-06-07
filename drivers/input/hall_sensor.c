@@ -77,10 +77,8 @@ static int hall_input_init(struct platform_device *pdev,
 	data->hall_dev->name = data->dev_name;
 	data->hall_dev->phys = data->input_name;
 	//input register type change from switch type to key type.
-	/*	
 	__set_bit(EV_SW, data->hall_dev->evbit);
 	__set_bit(SW_LID, data->hall_dev->swbit);
-	*/
 
     __set_bit(EV_KEY, data->hall_dev->evbit);
 	__set_bit(KEY_HALL, data->hall_dev->keybit);
@@ -318,9 +316,9 @@ static int hall_driver_probe(struct platform_device *dev)
 	//the logic is same as interrupt handler
 	data->status = gpio_get_value_cansleep(data->gpio);
 	if (data->status) {
-		input_report_key(data->hall_dev, KEY_HALL, 0);
+		input_report_switch(data->hall_dev, SW_LID, 0);
 	} else {
-		input_report_key(data->hall_dev, KEY_HALL, 1);
+		input_report_switch(data->hall_dev, SW_LID, 1);
 	}
 	input_sync(data->hall_dev);
 
